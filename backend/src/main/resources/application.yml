@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: smart-campus-hub
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/smartcampus}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 15MB
+  autoconfigure:
+    # Exclude the default OAuth2 client auto-config so we can register Google
+    # conditionally — the app starts fine even when GOOGLE_CLIENT_ID is empty.
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  admin-emails: ${ADMIN_EMAILS:}
+  upload-dir: ${UPLOAD_DIR:uploads}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:dev-jwt-secret-must-be-32chars-min!}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:86400}
+
+logging:
+  level:
+    org.mongodb.driver: warn
