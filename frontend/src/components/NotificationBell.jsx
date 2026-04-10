@@ -3,11 +3,17 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { apiDelete, apiGet, apiSend } from '../api/client'
 
 const TYPE_TABS = [
-  { key: 'ALL',     label: 'All' },
-  { key: 'BOOKING', label: 'Bookings' },
-  { key: 'TICKET',  label: 'Tickets' },
-  { key: 'COMMENT', label: 'Comments' },
+  { key: 'ALL',            label: 'All' },
+  { key: 'ANNOUNCEMENT',   label: 'News' },
+  { key: 'BOOKING',        label: 'Bookings' },
+  { key: 'TICKET',         label: 'Tickets' },
+  { key: 'COMMENT',        label: 'Comments' },
 ]
+
+function notificationTabKey(n) {
+  if (n.type === 'ANNOUNCEMENT') return 'ANNOUNCEMENT'
+  return guessType(n.message)
+}
 
 function guessType(message = '') {
   const m = message.toLowerCase()
@@ -112,7 +118,8 @@ export default function NotificationBell() {
     load()
   }
 
-  const filtered = tab === 'ALL' ? items : items.filter((n) => guessType(n.message) === tab)
+  const filtered =
+    tab === 'ALL' ? items : items.filter((n) => notificationTabKey(n) === tab)
   const unreadInTab = filtered.filter((n) => !n.read).length
 
   return (
@@ -196,8 +203,9 @@ export default function NotificationBell() {
 
               <AnimatePresence initial={false}>
                 {filtered.map((n) => {
-                  const nType = guessType(n.message)
-                  const dot = nType === 'BOOKING' ? 'bg-violet-400'
+                  const nType = notificationTabKey(n)
+                  const dot = nType === 'ANNOUNCEMENT' ? 'bg-emerald-400'
+                    : nType === 'BOOKING' ? 'bg-violet-400'
                     : nType === 'TICKET'  ? 'bg-blue-400'
                     : nType === 'COMMENT' ? 'bg-amber-400'
                     : 'bg-slate-300'

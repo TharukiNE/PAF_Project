@@ -1,10 +1,14 @@
 package com.sliit.smartcampus.repository;
 
 import com.sliit.smartcampus.entity.User;
+import com.sliit.smartcampus.entity.enums.UserRole;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends MongoRepository<User, String> {
     Optional<User> findByEmail(String email);
+
+    List<User> findByRole(UserRole role);
 }

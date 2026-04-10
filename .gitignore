@@ -3,6 +3,8 @@
 *.ipr
 *.iws
 *.jar
+# Maven Wrapper must be tracked (otherwise CI / Linux ./mvnw fails)
+!backend/.mvn/wrapper/maven-wrapper.jar
 *.sw?
 *~
 .#*

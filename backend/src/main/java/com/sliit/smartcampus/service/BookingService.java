@@ -142,6 +142,30 @@ public class BookingService {
         return toResponse(bookingRepository.save(b));
     }
 
+    /**
+     * Removes a booking from the system: pending requests (withdraw), or cleared cancelled/rejected rows.
+     * Approved bookings must be cancelled first.
+     */
+    public void deleteBooking(String id, User current) {
+        Booking b = getBooking(id);
+        if (current.getRole() != UserRole.ADMIN && !b.getUserId().equals(current.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You can only delete your own bookings");
+        }
+        if (b.getStatus() == BookingStatus.APPROVED) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Cancel an approved booking first, then you can remove it from your list");
+        }
+        if (b.getStatus() == BookingStatus.PENDING) {
+            bookingRepository.deleteById(id);
+            return;
+        }
+        if (b.getStatus() == BookingStatus.CANCELLED || b.getStatus() == BookingStatus.REJECTED) {
+            bookingRepository.deleteById(id);
+            return;
+        }
+        throw new ApiException(HttpStatus.BAD_REQUEST, "This booking cannot be deleted in its current state");
+    }
+
     private void assertNoOverlap(String resourceId, Instant start, Instant end, String excludeBookingId) {
         boolean overlap = bookingOverlapChecker.existsOverlapping(
                 resourceId, BLOCKING_STATUSES, start, end, excludeBookingId);

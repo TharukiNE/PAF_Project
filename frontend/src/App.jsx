@@ -7,6 +7,7 @@ import BookingsPage from './pages/BookingsPage.jsx'
 import MaintenancePage from './pages/MaintenancePage.jsx'
 import AdminUsersPage from './pages/AdminUsersPage.jsx'
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage.jsx'
+import AdminNotificationsPage from './pages/AdminNotificationsPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 
@@ -59,6 +60,14 @@ export default function App() {
           element={
             <RoleRoute roles={['ADMIN']}>
               <AdminAnalyticsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="admin/notifications"
+          element={
+            <RoleRoute roles={['ADMIN']}>
+              <AdminNotificationsPage />
             </RoleRoute>
           }
         />

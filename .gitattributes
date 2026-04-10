@@ -1,0 +1,2 @@
+# Keep Maven wrapper Unix-friendly on all platforms (avoids CI shebang errors)
+backend/mvnw text eol=lf
