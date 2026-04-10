@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -36,19 +37,19 @@ public class BookingController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("isAuthenticated()")
-    public BookingResponse create(@RequestBody BookingRequest request) {
+    public BookingResponse create(@Valid @RequestBody BookingRequest request) {
         return bookingService.create(request, currentUserService.requireCurrentUser());
     }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public BookingResponse updateStatus(@PathVariable String id, @RequestBody BookingStatusUpdateRequest request) {
+    public BookingResponse updateStatus(@PathVariable String id, @Valid @RequestBody BookingStatusUpdateRequest request) {
         return bookingService.updateStatus(id, request, currentUserService.requireCurrentUser());
     }
 
     @PutMapping("/{id}/times")
     @PreAuthorize("isAuthenticated()")
-    public BookingResponse updateTimes(@PathVariable String id, @RequestBody BookingTimeUpdateRequest request) {
+    public BookingResponse updateTimes(@PathVariable String id, @Valid @RequestBody BookingTimeUpdateRequest request) {
         return bookingService.updateTimes(id, request, currentUserService.requireCurrentUser());
     }
 

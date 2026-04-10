@@ -31,3 +31,9 @@ app:
 logging:
   level:
     org.mongodb.driver: warn
+
+# OpenAPI / Swagger UI — http://localhost:8080/swagger-ui.html
+springdoc:
+  swagger-ui:
+    tags-sorter: alpha
+    operations-sorter: alpha

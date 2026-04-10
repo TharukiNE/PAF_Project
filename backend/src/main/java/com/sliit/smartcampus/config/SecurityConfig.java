@@ -60,6 +60,12 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**"
+                ).permitAll()
+                .requestMatchers(
                     new AntPathRequestMatcher("/api/auth/register",   "POST"),
                     new AntPathRequestMatcher("/api/auth/login",      "POST"),
                     new AntPathRequestMatcher("/api/auth/auto-login", "POST"),
