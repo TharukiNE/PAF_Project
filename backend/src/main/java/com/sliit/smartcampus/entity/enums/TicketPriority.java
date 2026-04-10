@@ -1,0 +1,8 @@
+package com.sliit.smartcampus.entity.enums;
+
+public enum TicketPriority {
+    LOW,
+    MEDIUM,
+    HIGH,
+    CRITICAL
+}
