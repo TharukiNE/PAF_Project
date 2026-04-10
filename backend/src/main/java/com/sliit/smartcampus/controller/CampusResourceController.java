@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -32,13 +33,13 @@ public class CampusResourceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
-    public ResourceResponse create(@RequestBody ResourceRequest request) {
+    public ResourceResponse create(@Valid @RequestBody ResourceRequest request) {
         return campusResourceService.create(request);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResourceResponse update(@PathVariable String id, @RequestBody ResourceRequest request) {
+    public ResourceResponse update(@PathVariable String id, @Valid @RequestBody ResourceRequest request) {
         return campusResourceService.update(id, request);
     }
 

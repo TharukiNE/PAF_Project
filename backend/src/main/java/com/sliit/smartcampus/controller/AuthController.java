@@ -10,8 +10,10 @@ import com.sliit.smartcampus.security.CampusUserDetails;
 import com.sliit.smartcampus.security.CurrentUserService;
 import com.sliit.smartcampus.security.JwtService;
 import com.sliit.smartcampus.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,8 +40,9 @@ public class AuthController {
     private final UserRepository userRepository;
 
     @PostMapping("/register")
+    @Operation(security = {})
     @ResponseStatus(HttpStatus.CREATED)
-    public AuthResponse register(@RequestBody RegisterRequest request) {
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         UserResponse userResponse = authService.register(request);
         User user = userRepository.findById(userResponse.id()).orElseThrow();
         String token = jwtService.generateToken(user);
@@ -48,7 +51,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
-            @RequestBody LoginRequest request,
+            @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
@@ -68,6 +71,7 @@ public class AuthController {
     }
 
     @PostMapping("/auto-login")
+    @Operation(security = {})
     public ResponseEntity<AuthResponse> autoLogin(
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {

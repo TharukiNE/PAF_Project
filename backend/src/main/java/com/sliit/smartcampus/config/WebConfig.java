@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
@@ -17,6 +18,15 @@ import java.util.stream.Collectors;
 public class WebConfig implements WebMvcConfigurer {
 
     private final AppProperties appProperties;
+
+    /**
+     * SpringDoc 2.x serves the UI at {@code /swagger-ui/index.html}. Browsers and docs
+     * often use {@code /swagger-ui.html}; redirect so that URL works.
+     */
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addRedirectViewController("/swagger-ui.html", "/swagger-ui/index.html");
+    }
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {

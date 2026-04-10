@@ -1,14 +1,17 @@
 package com.sliit.smartcampus.service;
 
+import com.sliit.smartcampus.dto.admin.AdminNotificationBroadcastRequest;
 import com.sliit.smartcampus.entity.Booking;
 import com.sliit.smartcampus.entity.MaintenanceTicket;
 import com.sliit.smartcampus.entity.Notification;
 import com.sliit.smartcampus.entity.User;
 import com.sliit.smartcampus.entity.enums.BookingStatus;
 import com.sliit.smartcampus.entity.enums.NotificationType;
+import com.sliit.smartcampus.entity.enums.UserRole;
 import com.sliit.smartcampus.exception.ApiException;
 import com.sliit.smartcampus.repository.CampusResourceRepository;
 import com.sliit.smartcampus.repository.NotificationRepository;
+import com.sliit.smartcampus.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final CampusResourceRepository campusResourceRepository;
+    private final UserRepository userRepository;
 
     public void notifyBookingStatusChange(Booking booking, BookingStatus newStatus) {
         String resourceName = campusResourceRepository.findById(booking.getResourceId())
@@ -57,6 +61,30 @@ public class NotificationService {
         String msg = "New comment on ticket #" + ticket.getId() + ": " + shortPreview;
         for (String uid : recipients) {
             save(uid, NotificationType.TICKET_UPDATE, msg, "TICKET", ticket.getId());
+        }
+    }
+
+    public void broadcastAnnouncement(AdminNotificationBroadcastRequest req, User admin) {
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Administrator only");
+        }
+        List<String> targetIds;
+        if (req.audience() == AdminNotificationBroadcastRequest.Audience.ALL_STUDENTS) {
+            targetIds = userRepository.findByRole(UserRole.USER).stream().map(User::getId).toList();
+        } else {
+            if (req.userIds() == null || req.userIds().isEmpty()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "userIds is required when audience is SELECTED");
+            }
+            targetIds = req.userIds().stream().distinct().toList();
+        }
+        if (targetIds.isEmpty()) {
+            return;
+        }
+        String text = req.message().trim();
+        for (String uid : targetIds) {
+            userRepository.findById(uid)
+                    .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Unknown user id: " + uid));
+            save(uid, NotificationType.ANNOUNCEMENT, text, "ANNOUNCEMENT", null);
         }
     }
 

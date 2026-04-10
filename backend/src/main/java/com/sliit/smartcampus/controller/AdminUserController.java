@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -26,7 +27,7 @@ public class AdminUserController {
 
     @PutMapping("/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse updateRole(@PathVariable String id, @RequestBody UserRoleUpdateRequest request) {
+    public UserResponse updateRole(@PathVariable String id, @Valid @RequestBody UserRoleUpdateRequest request) {
         return adminUserService.updateRole(id, request, currentUserService.requireCurrentUser());
     }
 }

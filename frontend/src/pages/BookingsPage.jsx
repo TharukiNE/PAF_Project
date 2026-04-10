@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import QRCode from 'qrcode'
-import { apiGet, apiSend } from '../api/client'
+import { apiDelete, apiGet, apiSend } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const statusConfig = {
@@ -150,6 +150,14 @@ export default function BookingsPage() {
     } catch (e) { setError(e.message) }
   }
 
+  async function removeBooking(id) {
+    if (!confirm('Remove this booking from your list? This cannot be undone.')) return
+    try {
+      await apiDelete('/bookings/' + id)
+      load()
+    } catch (e) { setError(e.message) }
+  }
+
   // Filter logic
   const filtered = bookings.filter((b) => {
     if (mineOnly && b.userEmail !== user?.email) return false
@@ -273,6 +281,8 @@ export default function BookingsPage() {
         )}
         {filtered.map((b) => {
           const s = statusConfig[b.status] ?? statusConfig.PENDING
+          const isOwn = b.userEmail === user?.email
+          const canAct = isAdmin || isOwn
           return (
             <motion.div
               key={b.id}
@@ -358,13 +368,34 @@ export default function BookingsPage() {
                     </button>
                   </>
                 )}
-                {(b.status === 'PENDING' || b.status === 'APPROVED') && (
+                {canAct && b.status === 'PENDING' && (
                   <button
                     type="button"
-                    className="btn-ghost py-1.5 px-3 text-xs"
+                    title="Withdraw this request (no approval needed)"
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900"
+                    onClick={() => removeBooking(b.id)}
+                  >
+                    Withdraw
+                  </button>
+                )}
+                {canAct && b.status === 'APPROVED' && (
+                  <button
+                    type="button"
+                    title="Cancel this approved booking"
+                    className="btn-ghost py-1.5 px-3 text-xs text-amber-800 ring-1 ring-amber-200 hover:bg-amber-50"
                     onClick={() => cancelBooking(b.id)}
                   >
-                    Cancel
+                    Cancel booking
+                  </button>
+                )}
+                {canAct && (b.status === 'CANCELLED' || b.status === 'REJECTED') && (
+                  <button
+                    type="button"
+                    title="Delete this record from your list"
+                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50"
+                    onClick={() => removeBooking(b.id)}
+                  >
+                    Remove
                   </button>
                 )}
               </div>

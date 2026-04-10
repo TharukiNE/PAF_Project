@@ -1,4 +1,7 @@
 package com.sliit.smartcampus.dto.maintenance;
 
-public record TicketCommentRequest(String content) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record TicketCommentRequest(@NotBlank @Size(max = 4000) String content) {
 }

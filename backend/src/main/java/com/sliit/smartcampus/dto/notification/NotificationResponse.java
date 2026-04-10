@@ -1,17 +1,32 @@
 package com.sliit.smartcampus.dto.notification;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sliit.smartcampus.entity.Notification;
 import com.sliit.smartcampus.entity.enums.NotificationType;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 
+/**
+ * API shape uses JSON key {@code "read"} (not {@code readFlag}) for compatibility with the web client.
+ * The Java name {@code readFlag} avoids OpenAPI schema clashes with the word {@code read}.
+ */
+@Schema(description = "In-app notification for the signed-in user")
 public record NotificationResponse(
+        @Schema(description = "Notification id", example = "64b2f8a1c3d4e5f6a7b8c9d0")
         String id,
+        @Schema(description = "Category", example = "ANNOUNCEMENT")
         NotificationType type,
+        @Schema(description = "Human-readable message")
         String message,
+        @Schema(description = "Related domain type, e.g. BOOKING, TICKET, ANNOUNCEMENT", nullable = true)
         String relatedEntityType,
+        @Schema(description = "Related entity id", nullable = true)
         String relatedEntityId,
-        boolean read,
+        @Schema(description = "Whether the user has marked this notification as read", name = "read")
+        @JsonProperty("read")
+        boolean readFlag,
+        @Schema(description = "Created timestamp (ISO-8601)")
         Instant createdAt
 ) {
     public static NotificationResponse from(Notification n) {

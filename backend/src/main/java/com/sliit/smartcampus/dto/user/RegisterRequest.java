@@ -1,4 +1,12 @@
 package com.sliit.smartcampus.dto.user;
 
-public record RegisterRequest(String email, String name, String password) {
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record RegisterRequest(
+        @NotBlank @Email @Size(max = 255) String email,
+        @NotBlank @Size(max = 120) String name,
+        @NotBlank @Size(min = 8, max = 128) String password
+) {
 }

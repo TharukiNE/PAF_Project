@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -38,7 +39,7 @@ public class MaintenanceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("isAuthenticated()")
-    public TicketResponse create(@RequestBody TicketRequest request) {
+    public TicketResponse create(@Valid @RequestBody TicketRequest request) {
         return maintenanceService.create(request, currentUserService.requireCurrentUser());
     }
 
@@ -62,7 +63,7 @@ public class MaintenanceController {
     @PostMapping("/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("isAuthenticated()")
-    public TicketCommentResponse addComment(@PathVariable String id, @RequestBody TicketCommentRequest request) {
+    public TicketCommentResponse addComment(@PathVariable String id, @Valid @RequestBody TicketCommentRequest request) {
         return maintenanceService.addComment(id, request, currentUserService.requireCurrentUser());
     }
 
@@ -70,7 +71,7 @@ public class MaintenanceController {
     @PreAuthorize("isAuthenticated()")
     public TicketCommentResponse updateComment(
             @PathVariable String commentId,
-            @RequestBody TicketCommentRequest request) {
+            @Valid @RequestBody TicketCommentRequest request) {
         return maintenanceService.updateComment(commentId, request, currentUserService.requireCurrentUser());
     }
 
@@ -83,13 +84,13 @@ public class MaintenanceController {
 
     @PutMapping("/{id}/resolution")
     @PreAuthorize("hasAnyRole('TECHNICIAN','ADMIN')")
-    public TicketResponse resolution(@PathVariable String id, @RequestBody TicketResolutionRequest request) {
+    public TicketResponse resolution(@PathVariable String id, @Valid @RequestBody TicketResolutionRequest request) {
         return maintenanceService.updateResolution(id, request, currentUserService.requireCurrentUser());
     }
 
     @PutMapping("/{id}/technician")
     @PreAuthorize("hasRole('ADMIN')")
-    public TicketResponse assignTechnician(@PathVariable String id, @RequestBody AssignTechnicianRequest body) {
+    public TicketResponse assignTechnician(@PathVariable String id, @Valid @RequestBody AssignTechnicianRequest body) {
         String techId = body != null ? body.userId() : null;
         return maintenanceService.assignTechnician(id, techId, currentUserService.requireCurrentUser());
     }
