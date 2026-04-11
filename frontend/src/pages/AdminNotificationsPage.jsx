@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { apiGet, apiSend } from '../api/client'
 
+// AdminNotificationsPage provides a broadcast UI for admins to send announcements
+// to all or selected student accounts.
 export default function AdminNotificationsPage() {
   const [students, setStudents] = useState([])
   const [message, setMessage] = useState('')
@@ -11,6 +13,7 @@ export default function AdminNotificationsPage() {
   const [success, setSuccess] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Load the student recipients available for admin notification broadcasts.
   async function loadRecipients() {
     setError(null)
     try {
@@ -42,6 +45,7 @@ export default function AdminNotificationsPage() {
     setSelected(new Set())
   }
 
+  // Send the notification broadcast payload to the backend.
   async function submit(e) {
     e.preventDefault()
     setError(null)

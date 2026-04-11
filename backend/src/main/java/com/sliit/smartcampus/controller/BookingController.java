@@ -29,6 +29,11 @@ import java.util.concurrent.TimeUnit;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * Controller for resource booking management.
+ * Handles booking requests, listing, cancellation, rescheduling,
+ * and admin approval or rejection of reservations.
+ */
 @Tag(name = "Bookings", description = "Resource reservations (HAL + links): create, list, cancel, delete")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
@@ -45,6 +50,7 @@ public class BookingController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CollectionModel<EntityModel<BookingResponse>>> list(
             @RequestParam(defaultValue = "false") boolean all) {
+        // Fetch bookings visible to the current user. Admins can view all bookings.
         List<BookingResponse> raw = bookingService.listForCurrentUser(currentUserService.requireCurrentUser(), all);
         List<EntityModel<BookingResponse>> content = raw.stream()
                 .map(b -> bookingAssembler.toModel(b, all))
@@ -77,6 +83,7 @@ public class BookingController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<BookingResponse>> create(@Valid @RequestBody BookingRequest request) {
+        // Create a new booking request for the authenticated user.
         BookingResponse saved = bookingService.create(request, currentUserService.requireCurrentUser());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .cacheControl(CacheControl.noStore())
@@ -101,6 +108,7 @@ public class BookingController {
     public ResponseEntity<EntityModel<BookingResponse>> updateTimes(
             @PathVariable String id,
             @Valid @RequestBody BookingTimeUpdateRequest request) {
+        // Change booking times while preserving validity and preventing overlaps.
         BookingResponse saved = bookingService.updateTimes(id, request, currentUserService.requireCurrentUser());
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
@@ -111,6 +119,7 @@ public class BookingController {
             summary = "Cancel booking",
             description = "Sets status to CANCELLED. User may cancel own booking; admin may cancel any."
     )
+    // Cancel a booking and notify the user of the closed reservation.
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Booking cancelled"),
             @ApiResponse(responseCode = "400", description = "Already closed"),

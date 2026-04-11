@@ -23,6 +23,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Service for maintenance ticket lifecycle management.
+ * Handles ticket creation, image upload, comments, technician assignment, resolution, and reopen operations.
+ */
 @Service
 @RequiredArgsConstructor
 public class MaintenanceService {
@@ -44,6 +48,9 @@ public class MaintenanceService {
         return toResponse(getTicket(id));
     }
 
+    /**
+     * Open a new maintenance ticket from the reporter's request.
+     */
     public TicketResponse create(TicketRequest req, User reporter) {
         MaintenanceTicket t = MaintenanceTicket.builder()
                 .title(req.title() != null ? req.title() : "")
@@ -58,6 +65,9 @@ public class MaintenanceService {
         return toResponse(ticketRepository.save(t));
     }
 
+    /**
+     * Store an image attachment for a ticket and preserve metadata.
+     */
     public TicketImageResponse addImage(String ticketId, MultipartFile file) {
         MaintenanceTicket ticket = getTicket(ticketId);
         if (ticket.getImages().size() >= MAX_IMAGES_PER_TICKET) {
@@ -76,6 +86,9 @@ public class MaintenanceService {
         return TicketImageResponse.from(img);
     }
 
+    /**
+     * Load a protected ticket image file only if the current user may access the ticket.
+     */
     public Resource loadImageFile(String imageId, User current) {
         MaintenanceTicket ticket = ticketRepository.findByAnyImageId(imageId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Image not found"));
@@ -105,6 +118,9 @@ public class MaintenanceService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Image not found"));
     }
 
+    /**
+     * Add a comment to a ticket and notify interested parties.
+     */
     public TicketCommentResponse addComment(String ticketId, TicketCommentRequest req, User author) {
         MaintenanceTicket ticket = getTicket(ticketId);
         String content = req.content() != null ? req.content() : "";
@@ -123,6 +139,9 @@ public class MaintenanceService {
         return TicketCommentResponse.from(c, ticketId);
     }
 
+    /**
+     * Edit a comment authored by the current user.
+     */
     public TicketCommentResponse updateComment(String commentId, TicketCommentRequest req, User current) {
         MaintenanceTicket ticket = findTicketContainingComment(commentId);
         MaintenanceTicket.EmbeddedTicketComment c = ticket.getComments().stream()
@@ -139,6 +158,9 @@ public class MaintenanceService {
         return TicketCommentResponse.from(c, ticket.getId());
     }
 
+    /**
+     * Delete a comment from a ticket when owned by the current user.
+     */
     public void deleteComment(String commentId, User current) {
         MaintenanceTicket ticket = findTicketContainingComment(commentId);
         MaintenanceTicket.EmbeddedTicketComment c = ticket.getComments().stream()
@@ -153,6 +175,9 @@ public class MaintenanceService {
         ticketRepository.save(ticket);
     }
 
+    /**
+     * Update technician resolution notes and ticket status for qualified users.
+     */
     public TicketResponse updateResolution(String ticketId, TicketResolutionRequest req, User current) {
         if (current.getRole() != UserRole.TECHNICIAN && current.getRole() != UserRole.ADMIN) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only technicians or administrators can update resolution");
@@ -168,6 +193,9 @@ public class MaintenanceService {
         return toResponse(saved);
     }
 
+    /**
+     * Assign a technician to a ticket. Only an administrator may perform this action.
+     */
     public TicketResponse assignTechnician(String ticketId, String technicianUserId, User admin) {
         if (admin.getRole() != UserRole.ADMIN) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only administrators can assign technicians");
@@ -186,6 +214,9 @@ public class MaintenanceService {
         return toResponse(ticketRepository.save(t));
     }
 
+    /**
+     * Reopen a resolved or closed ticket for further work by the owner or support staff.
+     */
     public TicketResponse reopen(String ticketId, User current) {
         MaintenanceTicket t = getTicket(ticketId);
         if (t.getStatus() != TicketStatus.RESOLVED && t.getStatus() != TicketStatus.CLOSED) {
@@ -210,6 +241,9 @@ public class MaintenanceService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Ticket not found"));
     }
 
+    /**
+     * Ensure current user may access this ticket: reporter, technician, or admin.
+     */
     private void assertTicketAccess(MaintenanceTicket ticket, User current) {
         if (current.getRole() == UserRole.ADMIN || current.getRole() == UserRole.TECHNICIAN) {
             return;

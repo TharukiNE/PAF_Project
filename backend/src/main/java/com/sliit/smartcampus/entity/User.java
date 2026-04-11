@@ -40,6 +40,9 @@ public class User implements Serializable {
 
     private Instant createdAt;
 
+    /**
+     * Initialize the creation timestamp when a user record is first saved.
+     */
     public void touchCreated() {
         if (createdAt == null) {
             createdAt = Instant.now();

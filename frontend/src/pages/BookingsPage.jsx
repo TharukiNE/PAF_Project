@@ -5,6 +5,7 @@ import { unwrapHalCollection } from '../api/hateoas.js'
 import { apiDelete, apiGet, apiSend } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
+// Page-level utility config and helpers for booking management.
 const statusConfig = {
   PENDING:   { label: 'Pending',   cls: 'bg-amber-100 text-amber-700 ring-amber-200' },
   APPROVED:  { label: 'Approved',  cls: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
@@ -93,6 +94,8 @@ function QrModal({ booking, onClose }) {
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
+// BookingsPage handles the reservation workflow: creating booking requests, listing bookings,
+// filtering by status, and allowing admins to approve or cancel bookings.
 export default function BookingsPage() {
   const { user } = useAuth()
   const [bookings, setBookings]       = useState([])
@@ -106,6 +109,8 @@ export default function BookingsPage() {
 
   const isAdmin = user?.role === 'ADMIN'
 
+  // Load bookings and active resources from the backend.
+  // Admins receive the full booking list, while regular users see only their own bookings.
   async function load() {
     setError(null)
     try {
@@ -120,6 +125,7 @@ export default function BookingsPage() {
 
   useEffect(() => { load() }, [isAdmin])
 
+  // Submit a new booking request to the backend.
   async function createBooking(e) {
     e.preventDefault()
     setError(null)
@@ -137,6 +143,7 @@ export default function BookingsPage() {
     }
   }
 
+  // Admin-only action to approve, reject, or cancel a booking request.
   async function setStatus(id, status, reason) {
     try {
       await apiSend('/bookings/' + id + '/status', 'PUT', { status, reason: reason || null })
@@ -144,6 +151,7 @@ export default function BookingsPage() {
     } catch (e) { setError(e.message) }
   }
 
+  // Cancel the selected booking and refresh the booking list.
   async function cancelBooking(id) {
     try {
       await apiSend('/bookings/' + id + '/cancel', 'POST')
@@ -151,6 +159,7 @@ export default function BookingsPage() {
     } catch (e) { setError(e.message) }
   }
 
+  // Delete a booking record when it is allowed by current status.
   async function removeBooking(id) {
     if (!confirm('Remove this booking from your list? This cannot be undone.')) return
     try {

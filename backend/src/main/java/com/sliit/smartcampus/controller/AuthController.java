@@ -27,6 +27,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Locale;
 
+/**
+ * AuthController exposes endpoints for registration, login, demo auto-login,
+ * and retrieving the current authenticated user.
+ */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -39,6 +43,10 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
+    /**
+     * Registers a new user account and returns an authentication response.
+     * This creates the user record, issues a JWT, and returns the logged-in user.
+     */
     @PostMapping("/register")
     @Operation(security = {})
     @ResponseStatus(HttpStatus.CREATED)
@@ -49,6 +57,10 @@ public class AuthController {
         return AuthResponse.of(token, jwtService.getExpirationSeconds(), userResponse);
     }
 
+    /**
+     * Authenticates an existing user with email and password.
+     * On success, returns a JWT plus the authenticated user's details.
+     */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
@@ -70,6 +82,10 @@ public class AuthController {
         return ResponseEntity.ok(AuthResponse.of(token, jwtService.getExpirationSeconds(), UserResponse.from(user)));
     }
 
+    /**
+     * Returns a demo user account for quick access in development.
+     * The demo user is created if it does not already exist.
+     */
     @PostMapping("/auto-login")
     @Operation(security = {})
     public ResponseEntity<AuthResponse> autoLogin(
@@ -88,6 +104,9 @@ public class AuthController {
         return ResponseEntity.ok(AuthResponse.of(token, jwtService.getExpirationSeconds(), UserResponse.from(demo)));
     }
 
+    /**
+     * Returns the currently authenticated user's public profile.
+     */
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me() {
         return ResponseEntity.ok(UserResponse.from(currentUserService.requireCurrentUser()));

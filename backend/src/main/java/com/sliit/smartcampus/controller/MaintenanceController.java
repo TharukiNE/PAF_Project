@@ -31,6 +31,10 @@ import java.util.concurrent.TimeUnit;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * Controller for maintenance ticket management.
+ * Users file tickets, attach images, comment, and technicians/admins resolve issues.
+ */
 @Tag(name = "Maintenance", description = "Support tickets (HAL + links): list, create, images, comments, resolution")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
@@ -77,6 +81,7 @@ public class MaintenanceController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<TicketResponse>> create(@Valid @RequestBody TicketRequest request) {
+        // Create a new maintenance ticket for the authenticated reporter.
         TicketResponse saved = maintenanceService.create(request, currentUserService.requireCurrentUser());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .cacheControl(CacheControl.noStore())
@@ -87,6 +92,7 @@ public class MaintenanceController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<TicketImageResponse>> uploadImage(
             @PathVariable String id, @RequestPart("file") MultipartFile file) {
+        // Attach an image to an existing ticket for diagnostics or proof of issue.
         TicketImageResponse img = maintenanceService.addImage(id, file);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())

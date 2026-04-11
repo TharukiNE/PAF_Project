@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { unwrapHalCollection } from '../api/hateoas.js'
 import { apiDelete, apiGet, apiSend } from '../api/client'
 
+// NotificationBell provides the in-app notification dropdown and badge state.
 const TYPE_TABS = [
   { key: 'ALL',            label: 'All' },
   { key: 'ANNOUNCEMENT',   label: 'News' },
@@ -11,6 +12,7 @@ const TYPE_TABS = [
   { key: 'COMMENT',        label: 'Comments' },
 ]
 
+// Map notifications to UI tabs so the user can filter by type.
 function notificationTabKey(n) {
   if (n.type === 'ANNOUNCEMENT') return 'ANNOUNCEMENT'
   return guessType(n.message)
@@ -72,6 +74,7 @@ export default function NotificationBell() {
   const [tab, setTab]     = useState('ALL')
   const panelRef          = useRef(null)
 
+  // Reload the notification count and list from the backend.
   async function load() {
     try {
       const [c, list] = await Promise.all([
@@ -99,21 +102,25 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
+  // Mark a notification as read and refresh the list.
   async function markRead(id) {
     await apiSend('/notifications/' + id + '/read', 'PUT')
     load()
   }
 
+  // Mark all visible notifications as read.
   async function markAll() {
     await apiSend('/notifications/read-all', 'PUT')
     load()
   }
 
+  // Delete a specific notification from the user's inbox.
   async function deleteOne(id) {
     await apiDelete('/notifications/' + id)
     load()
   }
 
+  // Clear all notifications for the current user.
   async function clearAll() {
     await apiDelete('/notifications/clear-all')
     load()

@@ -15,6 +15,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.Locale;
 
+/**
+ * AuthService implements registration and demo auto-login logic.
+ * It validates incoming user data, creates users, and assigns roles.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -25,6 +29,11 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AppProperties appProperties;
 
+    /**
+     * Registers a new user based on the request payload.
+     * Normalizes the incoming email and name, checks for duplicates,
+     * hashes the password, and stores the new user record.
+     */
     public UserResponse register(RegisterRequest request) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
         String name = request.name() == null ? "" : request.name().trim();
@@ -46,6 +55,10 @@ public class AuthService {
         return UserResponse.from(userRepository.save(user));
     }
 
+    /**
+     * Ensures the demo user exists for auto-login flows.
+     * If the demo account is missing, it is created; otherwise it is returned.
+     */
     public User ensureAutoLoginUser() {
         UserRole desiredRole = appProperties.adminEmailList().contains(AUTO_LOGIN_EMAIL) ? UserRole.ADMIN : UserRole.USER;
 

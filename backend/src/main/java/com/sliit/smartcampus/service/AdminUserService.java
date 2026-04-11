@@ -12,16 +12,27 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Contains business logic for administrator-level user management.
+ * This service handles listing users and applying role changes.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminUserService {
 
     private final UserRepository userRepository;
 
+    /**
+     * Loads all users from the database and converts them to response DTOs.
+     */
     public List<UserResponse> listUsers() {
         return userRepository.findAll().stream().map(UserResponse::from).toList();
     }
 
+    /**
+     * Changes the role of a target user.
+     * Ensures the caller is an admin and that the requested role is valid.
+     */
     public UserResponse updateRole(String userId, UserRoleUpdateRequest req, User admin) {
         if (admin.getRole() != UserRole.ADMIN) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Administrator only");

@@ -20,6 +20,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Notification-related business logic.
+ * Creates user-facing notifications for booking, ticket, and announcement events.
+ */
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -28,6 +32,9 @@ public class NotificationService {
     private final CampusResourceRepository campusResourceRepository;
     private final UserRepository userRepository;
 
+    /**
+     * Notify a booking owner when the booking status changes.
+     */
     public void notifyBookingStatusChange(Booking booking, BookingStatus newStatus) {
         String resourceName = campusResourceRepository.findById(booking.getResourceId())
                 .map(r -> r.getName())
@@ -41,6 +48,9 @@ public class NotificationService {
         save(booking.getUserId(), NotificationType.BOOKING_STATUS, msg, "BOOKING", booking.getId());
     }
 
+    /**
+     * Notify the ticket reporter and assigned technician when resolution details change.
+     */
     public void notifyTicketResolutionUpdated(MaintenanceTicket ticket) {
         String msg = "Ticket #" + ticket.getId() + " \"" + ticket.getTitle() + "\" resolution was updated.";
         save(ticket.getReporterId(), NotificationType.TICKET_UPDATE, msg, "TICKET", ticket.getId());
@@ -50,6 +60,9 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Notify participants when a new comment is added to a ticket.
+     */
     public void notifyTicketCommentAdded(MaintenanceTicket ticket, User author, String preview) {
         Set<String> recipients = new HashSet<>();
         recipients.add(ticket.getReporterId());
@@ -64,6 +77,9 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Send a campus-wide announcement or a selected student broadcast from an admin.
+     */
     public void broadcastAnnouncement(AdminNotificationBroadcastRequest req, User admin) {
         if (admin.getRole() != UserRole.ADMIN) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Administrator only");
@@ -101,14 +117,23 @@ public class NotificationService {
         notificationRepository.save(n);
     }
 
+    /**
+     * Fetch all notifications for the specified user.
+     */
     public List<Notification> listForUser(String userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
+    /**
+     * Return the number of unread notifications for badge display.
+     */
     public long unreadCount(String userId) {
         return notificationRepository.countByUserIdAndReadFlagFalse(userId);
     }
 
+    /**
+     * Mark a single notification as read.
+     */
     public void markRead(String notificationId, String userId) {
         Notification n = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Notification not found"));
@@ -119,12 +144,18 @@ public class NotificationService {
         notificationRepository.save(n);
     }
 
+    /**
+     * Mark all notifications as read for a specific user.
+     */
     public void markAllRead(String userId) {
         List<Notification> list = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
         list.forEach(n -> n.setReadFlag(true));
         notificationRepository.saveAll(list);
     }
 
+    /**
+     * Delete a single notification after validating ownership.
+     */
     public void delete(String notificationId, String userId) {
         Notification n = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Notification not found"));
@@ -134,6 +165,9 @@ public class NotificationService {
         notificationRepository.deleteById(notificationId);
     }
 
+    /**
+     * Clear all notifications for the requested user.
+     */
     public void clearAll(String userId) {
         notificationRepository.deleteByUserId(userId);
     }

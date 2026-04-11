@@ -28,6 +28,10 @@ import java.util.concurrent.TimeUnit;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * Controller for in-app notifications.
+ * Exposes endpoints to read, mark read, and delete notifications for the authenticated user.
+ */
 @Tag(name = "Notifications", description = "In-app notifications (HAL + links) for the current user")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
@@ -47,6 +51,7 @@ public class NotificationController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CollectionModel<EntityModel<NotificationResponse>>> list() {
+        // Return the current user's notifications ordered by most recent.
         var user = currentUserService.requireCurrentUser();
         List<EntityModel<NotificationResponse>> content = notificationService.listForUser(user.getId()).stream()
                 .map(NotificationResponse::from)
@@ -61,6 +66,7 @@ public class NotificationController {
     }
 
     @Operation(summary = "Unread notification count", description = "HAL entity with _links to the notification collection.")
+    // Fast endpoint for displaying the unread badge count on the client.
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -86,6 +92,7 @@ public class NotificationController {
     @PutMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> markRead(@PathVariable String id) {
+        // Mark a single notification as read for the current user.
         var user = currentUserService.requireCurrentUser();
         notificationService.markRead(id, user.getId());
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
@@ -94,6 +101,7 @@ public class NotificationController {
     @PutMapping("/read-all")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> markAllRead() {
+        // Mark all notifications as read for the current user.
         var user = currentUserService.requireCurrentUser();
         notificationService.markAllRead(user.getId());
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
@@ -108,6 +116,7 @@ public class NotificationController {
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> delete(@PathVariable String id) {
+        // Delete a single notification owned by the current user.
         var user = currentUserService.requireCurrentUser();
         notificationService.delete(id, user.getId());
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
@@ -120,6 +129,7 @@ public class NotificationController {
     @DeleteMapping("/clear-all")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> clearAll() {
+        // Remove all notifications for the current user.
         var user = currentUserService.requireCurrentUser();
         notificationService.clearAll(user.getId());
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();

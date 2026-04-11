@@ -64,6 +64,7 @@ function SlaChip({ createdAt, status }) {
 // The /api/maintenance/tickets/images/{id}/file endpoint requires auth.
 // A plain <img src="..."> tag cannot send the Authorization header.
 // Solution: fetch as blob → create an object URL → pass to <img src>.
+// AuthImage loads protected ticket image attachments using the JWT token.
 function AuthImage({ src, alt, className, onClick }) {
   const [blobUrl, setBlobUrl] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -128,6 +129,7 @@ function AuthImage({ src, alt, className, onClick }) {
 }
 
 // ── Lightbox modal — shows a full-size image ──────────────────────────────────
+// Lightbox displays a full-size ticket image when a thumbnail is clicked.
 function Lightbox({ image, onClose }) {
   // Close on Escape key
   useEffect(() => {
@@ -183,6 +185,7 @@ function Lightbox({ image, onClose }) {
 }
 
 // ── Image grid — thumbnail strip for one ticket ───────────────────────────────
+// ImageGallery shows ticket attachments and provides an upload slot for users.
 function ImageGallery({ images, ticketId, canUpload, onUpload }) {
   const [lightboxImg, setLightboxImg] = useState(null)
 
@@ -247,6 +250,8 @@ function ImageGallery({ images, ticketId, canUpload, onUpload }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+// MaintenancePage is the user interface for reporting, tracking, commenting on,
+// and resolving campus maintenance tickets.
 export default function MaintenancePage() {
   const { user } = useAuth()
   const [tickets, setTickets]                   = useState([])
@@ -259,6 +264,7 @@ export default function MaintenancePage() {
 
   const canResolve = user?.role === 'TECHNICIAN' || user?.role === 'ADMIN'
 
+  // Load all maintenance tickets visible to the current user.
   async function load() {
     setError(null)
     try {
@@ -271,6 +277,7 @@ export default function MaintenancePage() {
 
   useEffect(() => { load() }, [])
 
+  // Submit a new maintenance ticket to the backend.
   async function createTicket(e) {
     e.preventDefault()
     try {
@@ -286,6 +293,7 @@ export default function MaintenancePage() {
     }
   }
 
+  // Upload a new image attachment for the ticket.
   async function uploadImage(ticketId, file) {
     if (!file) return
     const fd = new FormData()
@@ -298,6 +306,7 @@ export default function MaintenancePage() {
     }
   }
 
+  // Post a new ticket comment from the current user.
   async function postComment(ticketId) {
     const text = commentDrafts[ticketId]
     if (!text) return
@@ -308,6 +317,7 @@ export default function MaintenancePage() {
     } catch (err) { setError(err.message) }
   }
 
+  // Edit an existing comment that the current user owns.
   async function saveComment(commentId, content) {
     try {
       await apiSend('/maintenance/tickets/comments/' + commentId, 'PUT', { content })
@@ -315,6 +325,7 @@ export default function MaintenancePage() {
     } catch (err) { setError(err.message) }
   }
 
+  // Delete a comment from a ticket when allowed.
   async function removeComment(commentId) {
     try {
       await apiDelete('/maintenance/tickets/comments/' + commentId)
@@ -322,6 +333,7 @@ export default function MaintenancePage() {
     } catch (err) { setError(err.message) }
   }
 
+  // Save technician resolution notes and mark the ticket as resolved.
   async function saveResolution(ticketId) {
     const notes = resolutionDrafts[ticketId]
     if (!notes) return
@@ -335,6 +347,7 @@ export default function MaintenancePage() {
     } catch (err) { setError(err.message) }
   }
 
+  // Reopen a closed or resolved ticket for further action.
   async function reopen(ticketId) {
     try {
       await apiSend('/maintenance/tickets/' + ticketId + '/reopen', 'POST')

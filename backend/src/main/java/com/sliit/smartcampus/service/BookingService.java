@@ -23,6 +23,10 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Business logic for booking management.
+ * Validates booking requests, enforces overlap rules, and applies role-based access control.
+ */
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -36,6 +40,10 @@ public class BookingService {
     private final NotificationService notificationService;
     private final BookingOverlapChecker bookingOverlapChecker;
 
+    /**
+     * Return booking entries visible to the current user.
+     * Admins may optionally request all bookings.
+     */
     public List<BookingResponse> listForCurrentUser(User current, boolean adminView) {
         if (adminView && current.getRole() == UserRole.ADMIN) {
             return bookingRepository.findAllByOrderByStartTimeDesc().stream().map(this::toResponse).toList();
@@ -45,12 +53,18 @@ public class BookingService {
                 .toList();
     }
 
+    /**
+     * Load a specific booking and confirm the current user may view it.
+     */
     public BookingResponse getById(String id, User current) {
         Booking b = getBooking(id);
         assertCanView(b, current);
         return toResponse(b);
     }
 
+    /**
+     * Create a new booking request if the selected resource is active and the time slot is available.
+     */
     public BookingResponse create(BookingRequest req, User current) {
         if (req.resourceId() == null || req.resourceId().isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "resourceId is required");
@@ -77,6 +91,10 @@ public class BookingService {
         return toResponse(bookingRepository.save(b));
     }
 
+    /**
+     * Administrator approves, rejects, or cancels a booking.
+     * Rejection requires a reason and approval checks for overlap conflicts.
+     */
     public BookingResponse updateStatus(String id, BookingStatusUpdateRequest req, User current) {
         if (current.getRole() != UserRole.ADMIN) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Only administrators can approve or reject bookings");
@@ -107,6 +125,9 @@ public class BookingService {
         return toResponse(saved);
     }
 
+    /**
+     * Cancel a booking. Users may cancel their own bookings, admins may cancel any booking.
+     */
     public BookingResponse cancel(String id, User current) {
         Booking b = getBooking(id);
         if (current.getRole() != UserRole.ADMIN && !b.getUserId().equals(current.getId())) {
@@ -122,6 +143,9 @@ public class BookingService {
         return toResponse(saved);
     }
 
+    /**
+     * Reschedule a pending or approved booking. Ensures the new time does not overlap other active bookings.
+     */
     public BookingResponse updateTimes(String id, BookingTimeUpdateRequest req, User current) {
         Booking b = getBooking(id);
         if (!b.getUserId().equals(current.getId()) && current.getRole() != UserRole.ADMIN) {
@@ -146,6 +170,10 @@ public class BookingService {
      * Removes a booking from the system: pending requests (withdraw), or cleared cancelled/rejected rows.
      * Approved bookings must be cancelled first.
      */
+    /**
+     * Delete a booking when it is no longer active or has been cancelled.
+     * Approved bookings must be cancelled before removal.
+     */
     public void deleteBooking(String id, User current) {
         Booking b = getBooking(id);
         if (current.getRole() != UserRole.ADMIN && !b.getUserId().equals(current.getId())) {
@@ -166,6 +194,9 @@ public class BookingService {
         throw new ApiException(HttpStatus.BAD_REQUEST, "This booking cannot be deleted in its current state");
     }
 
+    /**
+     * Ensure a booking window does not overlap another pending or approved reservation.
+     */
     private void assertNoOverlap(String resourceId, Instant start, Instant end, String excludeBookingId) {
         boolean overlap = bookingOverlapChecker.existsOverlapping(
                 resourceId, BLOCKING_STATUSES, start, end, excludeBookingId);
@@ -175,6 +206,9 @@ public class BookingService {
         }
     }
 
+    /**
+     * Validate that the requested start/end times form a valid future interval.
+     */
     private static void validateTimeRange(Instant start, Instant end) {
         if (!end.isAfter(start)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "End time must be after start time");
@@ -186,6 +220,9 @@ public class BookingService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Booking not found"));
     }
 
+    /**
+     * Confirm the current user can view this booking: either its owner or an admin.
+     */
     private void assertCanView(Booking b, User current) {
         if (current.getRole() == UserRole.ADMIN) {
             return;

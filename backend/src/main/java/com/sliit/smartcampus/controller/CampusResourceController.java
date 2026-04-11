@@ -21,6 +21,10 @@ import java.util.concurrent.TimeUnit;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * Controller for campus facilities and resources.
+ * Users may view active resources; admins may create, update, and delete them.
+ */
 @RestController
 @RequestMapping("/api/resources")
 @RequiredArgsConstructor
@@ -32,6 +36,7 @@ public class CampusResourceController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CollectionModel<EntityModel<ResourceResponse>>> list() {
+        // Return all resources available in the system for the current user.
         List<ResourceResponse> raw = campusResourceService.findAll();
         List<EntityModel<ResourceResponse>> content = raw.stream()
                 .map(resourceAssembler::toModel)
@@ -57,6 +62,7 @@ public class CampusResourceController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EntityModel<ResourceResponse>> create(@Valid @RequestBody ResourceRequest request) {
+        // Admin creates a new campus resource for booking and facility management.
         ResourceResponse saved = campusResourceService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .cacheControl(CacheControl.noStore())
@@ -66,6 +72,7 @@ public class CampusResourceController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EntityModel<ResourceResponse>> update(
+        // Admin updates the fields of an existing resource.
             @PathVariable String id,
             @Valid @RequestBody ResourceRequest request) {
         ResourceResponse saved = campusResourceService.update(id, request);

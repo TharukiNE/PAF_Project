@@ -17,6 +17,7 @@ const typeLabel = {
 }
 
 const typeIcon = {
+// Facility resource metadata helpers used by the resources page.
   LECTURE_HALL: (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -59,6 +60,8 @@ function CapacityBar({ capacity }) {
   )
 }
 
+// ResourcesPage allows admins to add, edit, and remove campus facilities.
+// Regular users may view configured resources for booking and planning.
 export default function ResourcesPage() {
   const { user } = useAuth()
   const [list, setList]           = useState([])
@@ -70,6 +73,7 @@ export default function ResourcesPage() {
 
   const isAdmin = user?.role === 'ADMIN'
 
+  // Load all configured campus resources from the backend.
   async function load() {
     setError(null)
     try {
@@ -82,6 +86,7 @@ export default function ResourcesPage() {
 
   useEffect(() => { load() }, [])
 
+  // Create or update a campus resource depending on whether an edit is in progress.
   async function submit(e) {
     e.preventDefault()
     setError(null)
@@ -111,6 +116,7 @@ export default function ResourcesPage() {
     }
   }
 
+  // Populate the form for editing an existing resource.
   function startEdit(r) {
     setEditingId(r.id)
     setForm({
@@ -125,6 +131,7 @@ export default function ResourcesPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  // Delete a resource from the facility inventory.
   async function remove(id) {
     if (!confirm('Delete this resource?')) return
     try {
@@ -135,6 +142,7 @@ export default function ResourcesPage() {
     }
   }
 
+  // Apply UI filters for type and search term to the loaded resources.
   const filtered = list.filter((r) => {
     if (typeFilter !== 'ALL' && r.type !== typeFilter) return false
     if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false

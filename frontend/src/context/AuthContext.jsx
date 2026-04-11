@@ -4,11 +4,19 @@ import { apiGet, apiSend, clearAccessToken, persistAuthFromResponse, setAccessTo
 
 const AuthContext = createContext(null)
 
+/**
+ * Provides authentication state and actions for the app.
+ * Handles login, registration, current user refresh, and logout behavior.
+ */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined)
   const [error, setError] = useState(null)
   const navigate = useNavigate()
 
+  /**
+   * Fetch the current logged-in user from the backend.
+   * If the session is unauthorized, resets auth state to null.
+   */
   const refresh = useCallback(async () => {
     setError(null)
     try {
@@ -24,6 +32,9 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  /**
+   * Authenticate a user with email/password and persist the returned token.
+   */
   const login = useCallback(
     async (email, password) => {
       clearAccessToken()
@@ -34,6 +45,9 @@ export function AuthProvider({ children }) {
     [navigate],
   )
 
+  /**
+   * Register a new account, persist the returned auth token, and redirect home.
+   */
   const register = useCallback(
     async (email, name, password) => {
       clearAccessToken()

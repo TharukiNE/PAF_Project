@@ -12,20 +12,33 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Service that manages campus resources and facility inventory.
+ * Responsible for reading resources and handling admin resource lifecycle.
+ */
 @Service
 @RequiredArgsConstructor
 public class CampusResourceService {
 
     private final CampusResourceRepository campusResourceRepository;
 
+    /**
+     * Return all facility resources for listing and selection.
+     */
     public List<ResourceResponse> findAll() {
         return campusResourceRepository.findAll().stream().map(ResourceResponse::from).toList();
     }
 
+    /**
+     * Load a single resource by id and convert to a response DTO.
+     */
     public ResourceResponse findById(String id) {
         return ResourceResponse.from(getEntity(id));
     }
 
+    /**
+     * Create a new resource record with default values when needed.
+     */
     public ResourceResponse create(ResourceRequest req) {
         CampusResource r = CampusResource.builder()
                 .name(req.name() != null ? req.name() : "")
@@ -40,6 +53,9 @@ public class CampusResourceService {
         return ResourceResponse.from(campusResourceRepository.save(r));
     }
 
+    /**
+     * Update an existing resource and keep timestamps in sync.
+     */
     public ResourceResponse update(String id, ResourceRequest req) {
         CampusResource r = getEntity(id);
         if (req.name() != null) {
@@ -61,6 +77,9 @@ public class CampusResourceService {
         return ResourceResponse.from(campusResourceRepository.save(r));
     }
 
+    /**
+     * Delete a resource entity from the system if it exists.
+     */
     public void delete(String id) {
         if (!campusResourceRepository.existsById(id)) {
             throw new ApiException(HttpStatus.NOT_FOUND, "Resource not found");
@@ -68,6 +87,9 @@ public class CampusResourceService {
         campusResourceRepository.deleteById(id);
     }
 
+    /**
+     * Load the raw CampusResource entity for internal validation and association.
+     */
     public CampusResource getEntity(String id) {
         return campusResourceRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Resource not found"));

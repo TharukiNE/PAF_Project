@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext.jsx'
 
 const roleOptions = ['ADMIN', 'USER', 'TECHNICIAN']
 
+/**
+ * AdminUsersPage displays all registered members and allows an administrator
+ * to change their roles in the system.
+ */
 export default function AdminUsersPage() {
   const { user } = useAuth()
   const [users, setUsers] = useState([])
@@ -16,6 +20,9 @@ export default function AdminUsersPage() {
 
   const canEdit = useMemo(() => user?.role === 'ADMIN', [user?.role])
 
+  /**
+   * Load the list of users from the backend and handle loading state.
+   */
   async function load() {
     setError(null)
     try {
@@ -32,6 +39,10 @@ export default function AdminUsersPage() {
     load()
   }, [])
 
+  /**
+   * Send a role update request for the selected user.
+   * The current admin may not change their own role from this page.
+   */
   async function updateRole(id) {
     if (!canEdit) return
     const nextRole = roleDraft[id]
