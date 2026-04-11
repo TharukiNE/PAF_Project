@@ -45,7 +45,16 @@ public class BookingController {
     private final CurrentUserService currentUserService;
     private final BookingModelAssembler bookingAssembler;
 
-    @Operation(summary = "List bookings", description = "HAL collection in _embedded. Admins may pass all=true.")
+    @Operation(
+            summary = "List bookings",
+            description = "Retrieves all bookings visible to the current user. HAL collection format with _embedded array. " +
+                    "Admins may pass all=true to view all bookings across the system; regular users see only their own bookings."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved bookings list"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CollectionModel<EntityModel<BookingResponse>>> list(
@@ -63,7 +72,17 @@ public class BookingController {
                 .body(body);
     }
 
-    @Operation(summary = "Get booking by id", description = "Single booking as HAL entity with _links.")
+    @Operation(
+            summary = "Get booking by ID",
+            description = "Retrieves a single booking as a HAL entity with full HATEOAS _links for all discoverable actions. " +
+                    "Available actions depend on booking status (PENDING, APPROVED, CANCELLED, REJECTED)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Booking retrieved successfully with discoverable links"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Not authorized to view this booking"),
+            @ApiResponse(responseCode = "404", description = "Booking not found")
+    })
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<BookingResponse>> get(@PathVariable String id) {
@@ -74,11 +93,16 @@ public class BookingController {
                 .body(bookingAssembler.toModel(b, false));
     }
 
-    @Operation(summary = "Create booking request", description = "Returns HAL entity with discoverable action links.")
+    @Operation(
+            summary = "Create booking request",
+            description = "Creates a new booking request for the authenticated user. Returns HAL entity with discoverable action links " +
+                    "such as cancel, times (reschedule), and status update. Initial status is PENDING and awaits admin approval."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Booking created"),
-            @ApiResponse(responseCode = "400", description = "Invalid input or inactive resource"),
-            @ApiResponse(responseCode = "409", description = "Time slot overlaps another booking")
+            @ApiResponse(responseCode = "201", description = "Booking created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input: malformed request body or resource is inactive"),
+            @ApiResponse(responseCode = "409", description = "Time slot conflict: overlaps another booking for the same resource"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token")
     })
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -90,7 +114,18 @@ public class BookingController {
                 .body(bookingAssembler.toModel(saved, false));
     }
 
-    @Operation(summary = "Update booking status (admin)", description = "Approve, reject, or cancel with optional reason.")
+    @Operation(
+            summary = "Update booking status (admin only)",
+            description = "Admin-only endpoint to approve, reject, or cancel a booking. Returns updated booking with fresh HATEOAS links. " +
+                    "Transition statuses: PENDING→APPROVED/REJECTED by admin, or any status→CANCELLED."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Booking status updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid status transition or malformed request"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "User is not an admin"),
+            @ApiResponse(responseCode = "404", description = "Booking not found")
+    })
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EntityModel<BookingResponse>> updateStatus(
@@ -102,7 +137,19 @@ public class BookingController {
                 .body(bookingAssembler.toModel(saved, true));
     }
 
-    @Operation(summary = "Reschedule booking", description = "Owner or admin may change start/end for PENDING or APPROVED bookings.")
+    @Operation(
+            summary = "Reschedule booking",
+            description = "Allows booking owner or admin to change start/end times for PENDING or APPROVED bookings. " +
+                    "System validates that new time slot does not overlap other bookings and returns updated booking with HATEOAS links."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Booking times updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid time range or status prevents rescheduling"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Not owner or admin"),
+            @ApiResponse(responseCode = "404", description = "Booking not found"),
+            @ApiResponse(responseCode = "409", description = "New time slot conflicts with existing bookings")
+    })
     @PutMapping("/{id}/times")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<BookingResponse>> updateTimes(
@@ -117,13 +164,15 @@ public class BookingController {
 
     @Operation(
             summary = "Cancel booking",
-            description = "Sets status to CANCELLED. User may cancel own booking; admin may cancel any."
+            description = "Transitions booking to CANCELLED status. Users may cancel their own bookings; admins may cancel any booking. " +
+                    "Cancelled bookings can still be permanently deleted. Returns updated booking with remaining available actions."
     )
-    // Cancel a booking and notify the user of the closed reservation.
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Booking cancelled"),
-            @ApiResponse(responseCode = "400", description = "Already closed"),
-            @ApiResponse(responseCode = "403", description = "Not allowed")
+            @ApiResponse(responseCode = "200", description = "Booking cancelled successfully"),
+            @ApiResponse(responseCode = "400", description = "Booking already closed (REJECTED or already CANCELLED)"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Not allowed: not the booking owner and not an admin"),
+            @ApiResponse(responseCode = "404", description = "Booking not found")
     })
     @PostMapping("/{id}/cancel")
     @PreAuthorize("isAuthenticated()")
@@ -136,12 +185,14 @@ public class BookingController {
 
     @Operation(
             summary = "Delete or withdraw booking",
-            description = "See HAL delete link on entity when allowed. APPROVED bookings must be cancelled first."
+            description = "Permanently deletes a booking record. APPROVED bookings must be CANCELLED first before deletion. " +
+                    "Only booking owners and admins may delete. Check HAL _links on the GET booking response to see if deletion is allowed."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Booking removed"),
-            @ApiResponse(responseCode = "400", description = "Invalid state"),
-            @ApiResponse(responseCode = "403", description = "Not your booking"),
+            @ApiResponse(responseCode = "204", description = "Booking deleted successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid state: APPROVED bookings must be cancelled first"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Not authorized: not the owner or admin"),
             @ApiResponse(responseCode = "404", description = "Booking not found")
     })
     @DeleteMapping("/{id}")

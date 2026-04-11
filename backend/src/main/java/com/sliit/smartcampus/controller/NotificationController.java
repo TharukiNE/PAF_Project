@@ -43,10 +43,14 @@ public class NotificationController {
     private final CurrentUserService currentUserService;
     private final NotificationModelAssembler notificationAssembler;
 
-    @Operation(summary = "List my notifications", description = "HAL collection in _embedded; newest first.")
+    @Operation(
+            summary = "List my notifications",
+            description = "Retrieves all notifications for the authenticated user, ordered by most recent first. Returns HAL collection " +
+                    "with individual notification items containing HATEOAS links for mark-read and delete actions."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "HAL collection"),
-            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT")
+            @ApiResponse(responseCode = "200", description = "HAL collection of notifications retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token")
     })
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -65,15 +69,14 @@ public class NotificationController {
                 .body(body);
     }
 
-    @Operation(summary = "Unread notification count", description = "HAL entity with _links to the notification collection.")
-    // Fast endpoint for displaying the unread badge count on the client.
+    @Operation(
+            summary = "Get unread notification count",
+            description = "Fast, cacheable endpoint returning the count of unread notifications for the current user. " +
+                    "Useful for displaying badge count in UI. Includes HATEOAS links to full notifications list."
+    )
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "OK",
-                    content = @Content(schema = @Schema(implementation = UnreadCountResponse.class))
-            ),
-            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT")
+            @ApiResponse(responseCode = "200", description = "Unread count retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token")
     })
     @GetMapping("/unread-count")
     @PreAuthorize("isAuthenticated()")
@@ -89,6 +92,16 @@ public class NotificationController {
                 .body(body);
     }
 
+    @Operation(
+            summary = "Mark notification as read",
+            description = "Marks a single notification as read for the current user. Removes from unread badge count."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Notification marked as read"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Not your notification"),
+            @ApiResponse(responseCode = "404", description = "Notification not found")
+    })
     @PutMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> markRead(@PathVariable String id) {
@@ -98,6 +111,14 @@ public class NotificationController {
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
+    @Operation(
+            summary = "Mark all notifications as read",
+            description = "Bulk marks every notification for the current user as read. Clears unread badge count."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "All notifications marked as read"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token")
+    })
     @PutMapping("/read-all")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> markAllRead() {
@@ -107,11 +128,15 @@ public class NotificationController {
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
-    @Operation(summary = "Delete one notification", description = "Removes a single notification owned by the current user.")
+    @Operation(
+            summary = "Delete one notification",  
+            description = "Permanently removes a single notification owned by the current user. Notification cannot be recovered."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Deleted"),
+            @ApiResponse(responseCode = "204", description = "Notification deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
             @ApiResponse(responseCode = "403", description = "Not your notification"),
-            @ApiResponse(responseCode = "404", description = "Not found")
+            @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
@@ -122,9 +147,12 @@ public class NotificationController {
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
-    @Operation(summary = "Delete all my notifications", description = "Clears every notification for the current user.")
+    @Operation(
+            summary = "Delete all my notifications",
+            description = "Bulk deletes every notification for the current user. All notifications are permanently removed and cannot be recovered."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "All cleared")
+            @ApiResponse(responseCode = "204", description = "All notifications cleared successfully")
     })
     @DeleteMapping("/clear-all")
     @PreAuthorize("isAuthenticated()")

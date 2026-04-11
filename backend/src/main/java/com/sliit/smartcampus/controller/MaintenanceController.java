@@ -48,7 +48,16 @@ public class MaintenanceController {
     private final TicketCommentModelAssembler commentAssembler;
     private final TicketImageModelAssembler imageAssembler;
 
-    @Operation(summary = "List tickets", description = "HAL collection in _embedded; newest activity first.")
+    @Operation(
+            summary = "List all maintenance tickets",
+            description = "Retrieves all maintenance tickets visible to the current user. HAL collection format with _embedded array. " +
+                    "Tickets are sorted by most recent activity first. Tamperproof metadata tracking all participant comments."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved tickets list with HATEOAS links"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CollectionModel<EntityModel<TicketResponse>>> list() {
@@ -62,7 +71,17 @@ public class MaintenanceController {
                 .body(body);
     }
 
-    @Operation(summary = "Get ticket by id", description = "Single ticket as HAL entity with _links.")
+    @Operation(
+            summary = "Get ticket by ID",
+            description = "Retrieves a single maintenance ticket with all associated images and comments. Returns HAL entity with full HATEOAS _links " +
+                    "for discoverable actions like assign technician, mark resolution, reopen, or add images/comments."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Ticket retrieved successfully with full details and links"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions to view this ticket"),
+            @ApiResponse(responseCode = "404", description = "Ticket not found")
+    })
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<TicketResponse>> get(@PathVariable String id) {
@@ -73,10 +92,15 @@ public class MaintenanceController {
                 .body(ticketAssembler.toModel(t));
     }
 
-    @Operation(summary = "Create ticket", description = "Returns HAL entity with discoverable action links.")
+    @Operation(
+            summary = "Create new maintenance ticket",
+            description = "Opens a new maintenance request for the authenticated user. Assigns to reporter initially. " +
+                    "Returns ticket in OPEN status with discoverable action links for adding images, comments, and admin assignment."
+    )
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Ticket created"),
-            @ApiResponse(responseCode = "400", description = "Invalid input")
+            @ApiResponse(responseCode = "201", description = "Ticket created successfully with discoverable links"),
+            @ApiResponse(responseCode = "400", description = "Invalid input: missing required fields or malformed request body"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token")
     })
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -88,6 +112,17 @@ public class MaintenanceController {
                 .body(ticketAssembler.toModel(saved));
     }
 
+    @Operation(
+            summary = "Upload image to ticket",
+            description = "Attaches an image file to a ticket for diagnostics or proof. Image remains associated and downloadable. " +
+                    "Returns uploaded image metadata with link to download."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Image uploaded successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid file format or missing file"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "404", description = "Ticket not found")
+    })
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<TicketImageResponse>> uploadImage(
@@ -99,6 +134,15 @@ public class MaintenanceController {
                 .body(imageAssembler.toModel(img, id));
     }
 
+    @Operation(
+            summary = "Download image file",
+            description = "Downloads the original image file for a ticket. Sent inline for browser preview or as attachment download."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Image file downloaded successfully"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "404", description = "Image not found")
+    })
     @GetMapping("/images/{imageId}/file")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> downloadImage(@PathVariable String imageId) {
@@ -110,6 +154,17 @@ public class MaintenanceController {
                 .body(resource);
     }
 
+    @Operation(
+            summary = "Add comment to ticket",
+            description = "Posts a new comment or update to an existing ticket. All participants and admins can comment. " +
+                    "Comments are tamperproof with creator and timestamp metadata."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Comment added successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input: empty comment or malformed request"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "404", description = "Ticket not found")
+    })
     @PostMapping("/{id}/comments")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<TicketCommentResponse>> addComment(
@@ -120,6 +175,18 @@ public class MaintenanceController {
                 .body(commentAssembler.toModel(saved));
     }
 
+    @Operation(
+            summary = "Update comment",
+            description = "Edits an existing comment. Only the comment author can edit their own comments. " +
+                    "Edit history is preserved for audit purposes."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comment updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input or empty comment text"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Not authorized: not the comment author"),
+            @ApiResponse(responseCode = "404", description = "Comment not found")
+    })
     @PutMapping("/comments/{commentId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<TicketCommentResponse>> updateComment(
@@ -131,6 +198,16 @@ public class MaintenanceController {
                 .body(commentAssembler.toModel(saved));
     }
 
+    @Operation(
+            summary = "Delete comment",
+            description = "Removes a comment from a ticket. Only the comment author or admin can delete. Deletion is permanent but logged."  
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Comment deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Not authorized: not the author or admin"),
+            @ApiResponse(responseCode = "404", description = "Comment not found")
+    })
     @DeleteMapping("/comments/{commentId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteComment(@PathVariable String commentId) {
@@ -138,6 +215,18 @@ public class MaintenanceController {
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
+    @Operation(
+            summary = "Mark ticket as resolved",
+            description = "Technician or admin marks a ticket RESOLVED with resolution notes. Transitions ticket to RESOLVED status and " +
+                    "generates notification for the reporter. Can be reopened if needed."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Ticket marked as resolved"),
+            @ApiResponse(responseCode = "400", description = "Invalid state or missing resolution notes"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Only technician or admin can resolve"),
+            @ApiResponse(responseCode = "404", description = "Ticket not found")
+    })
     @PutMapping("/{id}/resolution")
     @PreAuthorize("hasAnyRole('TECHNICIAN','ADMIN')")
     public ResponseEntity<EntityModel<TicketResponse>> resolution(
@@ -148,6 +237,18 @@ public class MaintenanceController {
                 .body(ticketAssembler.toModel(saved));
     }
 
+    @Operation(
+            summary = "Assign technician to ticket",
+            description = "Admin assigns a technician to a maintenance ticket. Technician receives notification and gains assignment visibility. " +
+                    "Can be reassigned to a different technician or unassigned by passing null userId."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Technician assigned successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid technician ID or user not found"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Only admin can assign technicians"),
+            @ApiResponse(responseCode = "404", description = "Ticket or technician not found")
+    })
     @PutMapping("/{id}/technician")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EntityModel<TicketResponse>> assignTechnician(
@@ -159,6 +260,18 @@ public class MaintenanceController {
                 .body(ticketAssembler.toModel(saved));
     }
 
+    @Operation(
+            summary = "Reopen resolved ticket",
+            description = "Transitions a RESOLVED or CLOSED ticket back to OPEN status if the issue resurfaces. " +
+                    "Original comments and images are preserved. Notifies assigned technician."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Ticket reopened successfully"),
+            @ApiResponse(responseCode = "400", description = "Cannot reopen: ticket is not RESOLVED or CLOSED"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid JWT token"),
+            @ApiResponse(responseCode = "403", description = "Only reporter or admin can reopen"),
+            @ApiResponse(responseCode = "404", description = "Ticket not found")
+    })
     @PostMapping("/{id}/reopen")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EntityModel<TicketResponse>> reopen(@PathVariable String id) {
