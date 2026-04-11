@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { getErrorMessage } from '../api/client'
 
 const perks = [
   'Book lecture halls, labs & equipment',
@@ -36,7 +37,7 @@ export default function RegisterPage() {
     try {
       await register(email, name, password)
     } catch (err) {
-      setError(err.message || 'Registration failed')
+      setError(getErrorMessage(err) || 'Registration failed')
     } finally {
       setSubmitting(false)
     }

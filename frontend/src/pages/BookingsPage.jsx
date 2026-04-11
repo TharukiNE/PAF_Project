@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import QRCode from 'qrcode'
 import { unwrapHalCollection } from '../api/hateoas.js'
-import { apiDelete, apiGet, apiSend } from '../api/client'
+import { apiDelete, apiGet, apiSend, getErrorMessage } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
 // Page-level utility config and helpers for booking management.
@@ -119,7 +119,7 @@ export default function BookingsPage() {
       setBookings(unwrapHalCollection(b))
       setResources(unwrapHalCollection(r).filter((x) => x.status === 'ACTIVE'))
     } catch (e) {
-      setError(e.message)
+      setError(getErrorMessage(e))
     }
   }
 
@@ -139,33 +139,42 @@ export default function BookingsPage() {
       setForm({ resourceId: '', start: '', end: '', purpose: '' })
       load()
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err))
     }
   }
 
   // Admin-only action to approve, reject, or cancel a booking request.
   async function setStatus(id, status, reason) {
+    setError(null)
     try {
       await apiSend('/bookings/' + id + '/status', 'PUT', { status, reason: reason || null })
       load()
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      setError(getErrorMessage(e))
+    }
   }
 
   // Cancel the selected booking and refresh the booking list.
   async function cancelBooking(id) {
+    setError(null)
     try {
       await apiSend('/bookings/' + id + '/cancel', 'POST')
       load()
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      setError(getErrorMessage(e))
+    }
   }
 
   // Delete a booking record when it is allowed by current status.
   async function removeBooking(id) {
     if (!confirm('Remove this booking from your list? This cannot be undone.')) return
+    setError(null)
     try {
       await apiDelete('/bookings/' + id)
       load()
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      setError(getErrorMessage(e))
+    }
   }
 
   // Filter logic

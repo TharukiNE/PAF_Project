@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { apiGet, apiSend } from '../api/client'
+import { apiGet, apiSend, getErrorMessage } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const roleOptions = ['ADMIN', 'USER', 'TECHNICIAN']
@@ -29,7 +29,7 @@ export default function AdminUsersPage() {
       const data = await apiGet('/admin/users')
       setUsers(Array.isArray(data) ? data : [])
     } catch (e) {
-      setError(e.message)
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -55,7 +55,7 @@ export default function AdminUsersPage() {
       setRoleDraft((d) => ({ ...d, [id]: '' }))
       await load()
     } catch (e) {
-      setError(e.message)
+      setError(getErrorMessage(e))
     } finally {
       setUpdatingId(null)
     }

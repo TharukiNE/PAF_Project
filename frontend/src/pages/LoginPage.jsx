@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { getErrorMessage } from '../api/client'
 
 const features = [
   {
@@ -65,7 +66,7 @@ export default function LoginPage() {
     try {
       await login(email.trim(), password)
     } catch (err) {
-      setError(err.message || 'Could not sign in')
+      setError(getErrorMessage(err) || 'Could not sign in')
     } finally {
       setSubmitting(false)
     }

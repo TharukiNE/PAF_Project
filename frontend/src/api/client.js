@@ -28,6 +28,29 @@ function authHeaders(extra = {}) {
   return h
 }
 
+export function getErrorMessage(error) {
+  if (error == null) return 'Unknown error'
+  if (typeof error === 'string') return error
+  if (error instanceof Error && error.message) return error.message
+  if (typeof error === 'object') {
+    if (typeof error.message === 'string' && error.message) return error.message
+    const body = error.body
+    if (body && typeof body === 'object') {
+      if (typeof body.message === 'string' && body.message) return body.message
+      if (body.errors && typeof body.errors === 'object') {
+        const values = Object.values(body.errors)
+          .flatMap((item) => (Array.isArray(item) ? item : [item]))
+          .filter(Boolean)
+          .map(String)
+        const unique = [...new Set(values)]
+        if (unique.length) return unique.join('; ')
+      }
+    }
+    if (typeof error.status === 'number') return `Error ${error.status}`
+  }
+  return String(error)
+}
+
 async function handle(res) {
   if (res.status === 204) return null
   const text = await res.text()

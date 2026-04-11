@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { unwrapHalCollection } from '../api/hateoas.js'
-import { apiDelete, apiGet, apiSend, apiUpload, getAccessToken } from '../api/client'
+import { apiDelete, apiGet, apiSend, apiUpload, getErrorMessage } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const priorityConfig = {
@@ -271,7 +271,7 @@ export default function MaintenancePage() {
       const data = await apiGet('/maintenance/tickets')
       setTickets(unwrapHalCollection(data))
     } catch (e) {
-      setError(e.message)
+      setError(getErrorMessage(e))
     }
   }
 
@@ -280,6 +280,7 @@ export default function MaintenancePage() {
   // Submit a new maintenance ticket to the backend.
   async function createTicket(e) {
     e.preventDefault()
+    setError(null)
     try {
       await apiSend('/maintenance/tickets', 'POST', {
         title: form.title,
@@ -289,20 +290,21 @@ export default function MaintenancePage() {
       setForm({ title: '', description: '', priority: 'MEDIUM' })
       load()
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err))
     }
   }
 
   // Upload a new image attachment for the ticket.
   async function uploadImage(ticketId, file) {
     if (!file) return
+    setError(null)
     const fd = new FormData()
     fd.append('file', file)
     try {
       await apiUpload('/maintenance/tickets/' + ticketId + '/images', fd)
       load()
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err))
     }
   }
 
@@ -310,33 +312,43 @@ export default function MaintenancePage() {
   async function postComment(ticketId) {
     const text = commentDrafts[ticketId]
     if (!text) return
+    setError(null)
     try {
       await apiSend('/maintenance/tickets/' + ticketId + '/comments', 'POST', { content: text })
       setCommentDrafts((d) => ({ ...d, [ticketId]: '' }))
       load()
-    } catch (err) { setError(err.message) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   // Edit an existing comment that the current user owns.
   async function saveComment(commentId, content) {
+    setError(null)
     try {
       await apiSend('/maintenance/tickets/comments/' + commentId, 'PUT', { content })
       load()
-    } catch (err) { setError(err.message) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   // Delete a comment from a ticket when allowed.
   async function removeComment(commentId) {
+    setError(null)
     try {
       await apiDelete('/maintenance/tickets/comments/' + commentId)
       load()
-    } catch (err) { setError(err.message) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   // Save technician resolution notes and mark the ticket as resolved.
   async function saveResolution(ticketId) {
     const notes = resolutionDrafts[ticketId]
     if (!notes) return
+    setError(null)
     try {
       await apiSend('/maintenance/tickets/' + ticketId + '/resolution', 'PUT', {
         resolutionNotes: notes,
@@ -344,15 +356,20 @@ export default function MaintenancePage() {
       })
       setResolutionDrafts((d) => ({ ...d, [ticketId]: '' }))
       load()
-    } catch (err) { setError(err.message) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   // Reopen a closed or resolved ticket for further action.
   async function reopen(ticketId) {
+    setError(null)
     try {
       await apiSend('/maintenance/tickets/' + ticketId + '/reopen', 'POST')
       load()
-    } catch (err) { setError(err.message) }
+    } catch (err) {
+      setError(getErrorMessage(err))
+    }
   }
 
   const filtered = tickets.filter((t) => {

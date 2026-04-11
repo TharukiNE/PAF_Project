@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { apiGet, apiSend } from '../api/client'
+import { apiGet, apiSend, getErrorMessage } from '../api/client'
 
 // AdminNotificationsPage provides a broadcast UI for admins to send announcements
 // to all or selected student accounts.
 export default function AdminNotificationsPage() {
-  const [students, setStudents] = useState([])
+  const [students, setStudents] = useState(/** @type {{id:string,name?:string,email:string}[]} */ ([]))
   const [message, setMessage] = useState('')
   const [audience, setAudience] = useState('ALL_STUDENTS')
-  const [selected, setSelected] = useState(() => new Set())
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
+  const [selected, setSelected] = useState(() => /** @type {Set<string>} */ (new Set()))
+  const [error, setError] = useState(/** @type {string|null} */ (null))
+  const [success, setSuccess] = useState(/** @type {string|null} */ (null))
   const [loading, setLoading] = useState(false)
 
   // Load the student recipients available for admin notification broadcasts.
@@ -20,7 +20,7 @@ export default function AdminNotificationsPage() {
       const data = await apiGet('/admin/notifications/recipients')
       setStudents(Array.isArray(data) ? data : [])
     } catch (e) {
-      setError(e.message)
+      setError(getErrorMessage(e))
     }
   }
 
@@ -28,6 +28,7 @@ export default function AdminNotificationsPage() {
     loadRecipients()
   }, [])
 
+  /** @param {string} id */
   function toggleId(id) {
     setSelected((prev) => {
       const next = new Set(prev)
@@ -46,6 +47,7 @@ export default function AdminNotificationsPage() {
   }
 
   // Send the notification broadcast payload to the backend.
+  /** @param {any} e */
   async function submit(e) {
     e.preventDefault()
     setError(null)
@@ -60,6 +62,7 @@ export default function AdminNotificationsPage() {
       return
     }
     setLoading(true)
+    setError(null)
     try {
       await apiSend('/admin/notifications/broadcast', 'POST', {
         message: trimmed,
@@ -74,7 +77,7 @@ export default function AdminNotificationsPage() {
       setMessage('')
       clearSelection()
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err))
     } finally {
       setLoading(false)
     }

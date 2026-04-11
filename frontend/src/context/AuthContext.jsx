@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiGet, apiSend, clearAccessToken, persistAuthFromResponse, setAccessToken } from '../api/client'
+import { apiGet, apiSend, clearAccessToken, persistAuthFromResponse, setAccessToken, getErrorMessage } from '../api/client'
 
 const AuthContext = createContext(null)
 
@@ -26,7 +26,7 @@ export function AuthProvider({ children }) {
       if (e.status === 401) {
         setUser(null)
       } else {
-        setError(e.message)
+        setError(getErrorMessage(e))
         setUser(null)
       }
     }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { apiGet } from '../api/client'
+import { apiGet, getErrorMessage } from '../api/client'
 
 // ── Tiny inline SVG bar chart ─────────────────────────────────────────────────
 function BarChart({ data, labelKey, valueKey, color = '#7c3aed' }) {
@@ -119,7 +119,7 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     apiGet('/admin/analytics')
       .then((d) => { setStats(d); setLoading(false) })
-      .catch((e) => { setError(e.message); setLoading(false) })
+      .catch((e) => { setError(getErrorMessage(e)); setLoading(false) })
   }, [])
 
   function exportCsv() {

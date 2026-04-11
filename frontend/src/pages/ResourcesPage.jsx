@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { unwrapHalCollection } from '../api/hateoas.js'
-import { apiDelete, apiGet, apiSend } from '../api/client'
+import { apiDelete, apiGet, apiSend, getErrorMessage } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const emptyForm = {
@@ -80,7 +80,7 @@ export default function ResourcesPage() {
       const data = await apiGet('/resources')
       setList(unwrapHalCollection(data))
     } catch (e) {
-      setError(e.message)
+      setError(getErrorMessage(e))
     }
   }
 
@@ -112,7 +112,7 @@ export default function ResourcesPage() {
       setEditingId(null)
       load()
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err))
     }
   }
 
@@ -134,11 +134,12 @@ export default function ResourcesPage() {
   // Delete a resource from the facility inventory.
   async function remove(id) {
     if (!confirm('Delete this resource?')) return
+    setError(null)
     try {
       await apiDelete('/resources/' + id)
       load()
     } catch (e) {
-      setError(e.message)
+      setError(getErrorMessage(e))
     }
   }
 
