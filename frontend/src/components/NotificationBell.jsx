@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { unwrapHalCollection } from '../api/hateoas.js'
 import { apiDelete, apiGet, apiSend } from '../api/client'
 
 const TYPE_TABS = [
@@ -78,7 +79,7 @@ export default function NotificationBell() {
         apiGet('/notifications'),
       ])
       setCount(c.count ?? 0)
-      setItems(Array.isArray(list) ? list : [])
+      setItems(unwrapHalCollection(list))
     } catch {
       setCount(0)
     }

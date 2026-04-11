@@ -32,6 +32,10 @@ logging:
   level:
     org.mongodb.driver: warn
 
+# REST notes (rubric): API calls are authorized statelessly via JWT on each request.
+# GET /api/bookings and /api/resources set short private Cache-Control + Vary: Authorization.
+# HATEOAS links are included in those JSON bodies (_links / _embedded).
+
 # OpenAPI / Swagger UI — http://localhost:8080/swagger-ui.html (redirects) or /swagger-ui/index.html
 springdoc:
   swagger-ui:

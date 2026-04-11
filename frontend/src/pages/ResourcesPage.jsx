@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { unwrapHalCollection } from '../api/hateoas.js'
 import { apiDelete, apiGet, apiSend } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -73,7 +74,7 @@ export default function ResourcesPage() {
     setError(null)
     try {
       const data = await apiGet('/resources')
-      setList(Array.isArray(data) ? data : [])
+      setList(unwrapHalCollection(data))
     } catch (e) {
       setError(e.message)
     }

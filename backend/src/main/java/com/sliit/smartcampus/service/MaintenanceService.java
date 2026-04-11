@@ -120,7 +120,7 @@ public class MaintenanceService {
         ticket.touchTimestamps();
         ticketRepository.save(ticket);
         notificationService.notifyTicketCommentAdded(ticket, author, content);
-        return TicketCommentResponse.from(c);
+        return TicketCommentResponse.from(c, ticketId);
     }
 
     public TicketCommentResponse updateComment(String commentId, TicketCommentRequest req, User current) {
@@ -136,7 +136,7 @@ public class MaintenanceService {
         c.setUpdatedAt(Instant.now());
         ticket.touchTimestamps();
         ticketRepository.save(ticket);
-        return TicketCommentResponse.from(c);
+        return TicketCommentResponse.from(c, ticket.getId());
     }
 
     public void deleteComment(String commentId, User current) {
@@ -229,7 +229,7 @@ public class MaintenanceService {
                 .toList();
         List<TicketCommentResponse> comments = t.getComments().stream()
                 .sorted(Comparator.comparing(MaintenanceTicket.EmbeddedTicketComment::getCreatedAt))
-                .map(TicketCommentResponse::from)
+                .map(c -> TicketCommentResponse.from(c, t.getId()))
                 .toList();
         return TicketResponse.from(t, reporterEmail, images, comments);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { unwrapHalCollection } from '../api/hateoas.js'
 import { apiDelete, apiGet, apiSend, apiUpload, getAccessToken } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -262,7 +263,7 @@ export default function MaintenancePage() {
     setError(null)
     try {
       const data = await apiGet('/maintenance/tickets')
-      setTickets(Array.isArray(data) ? data : [])
+      setTickets(unwrapHalCollection(data))
     } catch (e) {
       setError(e.message)
     }

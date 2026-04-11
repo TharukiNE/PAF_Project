@@ -1,10 +1,21 @@
 package com.sliit.smartcampus.controller;
 
 import com.sliit.smartcampus.dto.maintenance.*;
+import com.sliit.smartcampus.hateoas.MaintenanceTicketModelAssembler;
+import com.sliit.smartcampus.hateoas.TicketCommentModelAssembler;
+import com.sliit.smartcampus.hateoas.TicketImageModelAssembler;
 import com.sliit.smartcampus.security.CurrentUserService;
 import com.sliit.smartcampus.service.MaintenanceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,7 +26,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
+@Tag(name = "Maintenance", description = "Support tickets (HAL + links): list, create, images, comments, resolution")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/maintenance/tickets")
 @RequiredArgsConstructor
@@ -23,30 +40,57 @@ public class MaintenanceController {
 
     private final MaintenanceService maintenanceService;
     private final CurrentUserService currentUserService;
+    private final MaintenanceTicketModelAssembler ticketAssembler;
+    private final TicketCommentModelAssembler commentAssembler;
+    private final TicketImageModelAssembler imageAssembler;
 
+    @Operation(summary = "List tickets", description = "HAL collection in _embedded; newest activity first.")
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public List<TicketResponse> list() {
-        return maintenanceService.listAll();
+    public ResponseEntity<CollectionModel<EntityModel<TicketResponse>>> list() {
+        List<TicketResponse> raw = maintenanceService.listAll();
+        List<EntityModel<TicketResponse>> content = raw.stream().map(ticketAssembler::toModel).toList();
+        CollectionModel<EntityModel<TicketResponse>> body = CollectionModel.of(content,
+                linkTo(methodOn(MaintenanceController.class).list()).withSelfRel());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(30, TimeUnit.SECONDS).cachePrivate().mustRevalidate())
+                .header(HttpHeaders.VARY, "Authorization")
+                .body(body);
     }
 
+    @Operation(summary = "Get ticket by id", description = "Single ticket as HAL entity with _links.")
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public TicketResponse get(@PathVariable String id) {
-        return maintenanceService.getById(id);
+    public ResponseEntity<EntityModel<TicketResponse>> get(@PathVariable String id) {
+        TicketResponse t = maintenanceService.getById(id);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(15, TimeUnit.SECONDS).cachePrivate().mustRevalidate())
+                .header(HttpHeaders.VARY, "Authorization")
+                .body(ticketAssembler.toModel(t));
     }
 
+    @Operation(summary = "Create ticket", description = "Returns HAL entity with discoverable action links.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Ticket created"),
+            @ApiResponse(responseCode = "400", description = "Invalid input")
+    })
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("isAuthenticated()")
-    public TicketResponse create(@Valid @RequestBody TicketRequest request) {
-        return maintenanceService.create(request, currentUserService.requireCurrentUser());
+    public ResponseEntity<EntityModel<TicketResponse>> create(@Valid @RequestBody TicketRequest request) {
+        TicketResponse saved = maintenanceService.create(request, currentUserService.requireCurrentUser());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .cacheControl(CacheControl.noStore())
+                .body(ticketAssembler.toModel(saved));
     }
 
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
-    public TicketImageResponse uploadImage(@PathVariable String id, @RequestPart("file") MultipartFile file) {
-        return maintenanceService.addImage(id, file);
+    public ResponseEntity<EntityModel<TicketImageResponse>> uploadImage(
+            @PathVariable String id, @RequestPart("file") MultipartFile file) {
+        TicketImageResponse img = maintenanceService.addImage(id, file);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(imageAssembler.toModel(img, id));
     }
 
     @GetMapping("/images/{imageId}/file")
@@ -61,43 +105,60 @@ public class MaintenanceController {
     }
 
     @PostMapping("/{id}/comments")
-    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("isAuthenticated()")
-    public TicketCommentResponse addComment(@PathVariable String id, @Valid @RequestBody TicketCommentRequest request) {
-        return maintenanceService.addComment(id, request, currentUserService.requireCurrentUser());
+    public ResponseEntity<EntityModel<TicketCommentResponse>> addComment(
+            @PathVariable String id, @Valid @RequestBody TicketCommentRequest request) {
+        TicketCommentResponse saved = maintenanceService.addComment(id, request, currentUserService.requireCurrentUser());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .cacheControl(CacheControl.noStore())
+                .body(commentAssembler.toModel(saved));
     }
 
     @PutMapping("/comments/{commentId}")
     @PreAuthorize("isAuthenticated()")
-    public TicketCommentResponse updateComment(
+    public ResponseEntity<EntityModel<TicketCommentResponse>> updateComment(
             @PathVariable String commentId,
             @Valid @RequestBody TicketCommentRequest request) {
-        return maintenanceService.updateComment(commentId, request, currentUserService.requireCurrentUser());
+        TicketCommentResponse saved = maintenanceService.updateComment(commentId, request, currentUserService.requireCurrentUser());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(commentAssembler.toModel(saved));
     }
 
     @DeleteMapping("/comments/{commentId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("isAuthenticated()")
-    public void deleteComment(@PathVariable String commentId) {
+    public ResponseEntity<Void> deleteComment(@PathVariable String commentId) {
         maintenanceService.deleteComment(commentId, currentUserService.requireCurrentUser());
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     @PutMapping("/{id}/resolution")
     @PreAuthorize("hasAnyRole('TECHNICIAN','ADMIN')")
-    public TicketResponse resolution(@PathVariable String id, @Valid @RequestBody TicketResolutionRequest request) {
-        return maintenanceService.updateResolution(id, request, currentUserService.requireCurrentUser());
+    public ResponseEntity<EntityModel<TicketResponse>> resolution(
+            @PathVariable String id, @Valid @RequestBody TicketResolutionRequest request) {
+        TicketResponse saved = maintenanceService.updateResolution(id, request, currentUserService.requireCurrentUser());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ticketAssembler.toModel(saved));
     }
 
     @PutMapping("/{id}/technician")
     @PreAuthorize("hasRole('ADMIN')")
-    public TicketResponse assignTechnician(@PathVariable String id, @Valid @RequestBody AssignTechnicianRequest body) {
+    public ResponseEntity<EntityModel<TicketResponse>> assignTechnician(
+            @PathVariable String id, @Valid @RequestBody AssignTechnicianRequest body) {
         String techId = body != null ? body.userId() : null;
-        return maintenanceService.assignTechnician(id, techId, currentUserService.requireCurrentUser());
+        TicketResponse saved = maintenanceService.assignTechnician(id, techId, currentUserService.requireCurrentUser());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ticketAssembler.toModel(saved));
     }
 
     @PostMapping("/{id}/reopen")
     @PreAuthorize("isAuthenticated()")
-    public TicketResponse reopen(@PathVariable String id) {
-        return maintenanceService.reopen(id, currentUserService.requireCurrentUser());
+    public ResponseEntity<EntityModel<TicketResponse>> reopen(@PathVariable String id) {
+        TicketResponse saved = maintenanceService.reopen(id, currentUserService.requireCurrentUser());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(ticketAssembler.toModel(saved));
     }
 }

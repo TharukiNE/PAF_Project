@@ -10,12 +10,13 @@
 3. [Features & Functions](#3-features--functions)
 4. [REST API Reference](#4-rest-api-reference)
 5. [Database Collections](#5-database-collections)
-6. [Project Structure](#6-project-structure)
-7. [CRUD Work Allocation — 4 Members](#7-crud-work-allocation--4-members)
-8. [How to Run the Project](#8-how-to-run-the-project)
-9. [Environment Variables](#9-environment-variables)
-10. [Architecture — How Layers Communicate](#10-architecture--how-layers-communicate)
-11. [Key Design Decisions](#11-key-design-decisions)
+6. [System Architecture (Marking Rubric)](#6-system-architecture-marking-rubric)
+7. [Project Structure](#7-project-structure)
+8. [CRUD Work Allocation — 4 Members](#8-crud-work-allocation--4-members)
+9. [How to Run the Project](#9-how-to-run-the-project)
+10. [Environment Variables](#10-environment-variables)
+11. [Architecture — How Layers Communicate](#11-architecture--how-layers-communicate)
+12. [Key Design Decisions](#12-key-design-decisions)
 
 ---
 
@@ -51,6 +52,8 @@ Smart Campus Operations Hub is a full-stack web platform for a university to man
 | Boilerplate | Lombok | — |
 | File Storage | Local disk (FileStorageService) | — |
 | Architecture | Layered: Controller → Service → Repository → Entity | — |
+| HATEOAS | Spring HATEOAS (HAL JSON: `_links`, `_embedded`) | via `spring-boot-starter-hateoas` |
+| API docs | SpringDoc OpenAPI 3 + Swagger UI | `springdoc-openapi-starter-webmvc-ui` 2.5.0 |
 
 ### Frontend
 
@@ -176,6 +179,18 @@ Smart Campus Operations Hub is a full-stack web platform for a university to man
 
 **Base URL (dev):** `http://localhost:5173/api` (via Vite proxy to `http://127.0.0.1:8080`)
 
+### OpenAPI / Swagger UI (interactive docs)
+
+The backend exposes **OpenAPI 3** JSON and **Swagger UI** via **SpringDoc** (`OpenApiConfig.java` defines the API title, JWT **bearerAuth** scheme, and rubric notes). Use these URLs when the Spring Boot app is running on port **8080**:
+
+| Resource | URL |
+|---|---|
+| **Swagger UI** (main entry) | [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) |
+| **Legacy redirect** (`/swagger-ui.html` → index) | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) |
+| **OpenAPI JSON** | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) |
+
+**Try secured endpoints:** click **Authorize**, paste `Bearer <accessToken>` from `POST /api/auth/login` or `POST /api/auth/register`. HAL responses (`_links`, `_embedded`) appear in the **response body** after **Execute**, even if the schema panel looks generic.
+
 ---
 
 ### Auth — `/api/auth`
@@ -291,7 +306,85 @@ MongoDB database name: `smartcampus`
 
 ---
 
-## 6. Project Structure
+## 6. System Architecture (Marking Rubric)
+
+This section summarises how the system is structured for coursework marking: **separation of concerns**, **REST + HATEOAS**, **security**, and **discoverable API documentation**.
+
+### 6.1 High-level system view
+
+The app is a **React SPA** talking to a **Spring Boot REST API** backed by **MongoDB**. In development, the Vite dev server proxies `/api` to the JVM process so the browser avoids CORS issues.
+
+```mermaid
+flowchart TB
+  subgraph browser [Browser]
+    UI[React 18 SPA\nVite :5173]
+  end
+  subgraph spring [Spring Boot :8080]
+    SEC[Spring Security\nJWT + OAuth2]
+    CTRL[REST Controllers]
+    HAL[HATEOAS Assemblers\nHAL JSON]
+    SVC[Services\nbusiness rules]
+    REPO[MongoRepositories]
+  end
+  DB[(MongoDB\nAtlas or local)]
+  UI -->|"/api/* proxy"| SEC
+  SEC --> CTRL
+  CTRL --> HAL
+  CTRL --> SVC
+  SVC --> REPO
+  REPO --> DB
+```
+
+### 6.2 Backend layering — examples from this project
+
+| Concern | Role | Concrete examples in repo |
+|---|---|---|
+| **HTTP / REST** | Map paths and HTTP verbs; return status codes and bodies | `BookingController.java`, `CampusResourceController.java`, `MaintenanceController.java`, `NotificationController.java` |
+| **Security** | Authenticate JWT (and OAuth2 session where used); enforce `@PreAuthorize` | `SecurityConfig.java`, `JwtAuthenticationFilter.java`, `JwtService.java` |
+| **Application logic** | Validation, workflows, cross-collection reads, side effects (e.g. notifications) | `BookingService.java`, `MaintenanceService.java`, `NotificationService.java` |
+| **Persistence** | CRUD and queries on MongoDB documents | `BookingRepository.java`, `MaintenanceTicketRepository.java`, … |
+| **Domain model** | Document shape stored in MongoDB | `Booking.java`, `MaintenanceTicket.java`, `User.java`, … |
+| **API contracts** | Request/response JSON shapes | `dto/booking/BookingRequest.java`, `dto/maintenance/TicketResponse.java`, … |
+| **Cross-cutting errors** | Consistent JSON error payloads | `GlobalExceptionHandler.java`, `ApiException.java` |
+
+Controllers **do not** contain business rules; they delegate to services. Services **do not** expose HTTP details.
+
+### 6.3 HATEOAS (HAL) — examples from this project
+
+**Dependency:** `spring-boot-starter-hateoas` in `backend/pom.xml`.
+
+**Pattern:** DTOs are wrapped in `EntityModel` / `CollectionModel`; **link relations** (`self`, `bookings`, `cancel`, `tickets`, `mark-read`, etc.) are built with `WebMvcLinkBuilder` in dedicated assemblers under:
+
+`backend/src/main/java/com/sliit/smartcampus/hateoas/`
+
+| Assembler | Wraps | Used by controller |
+|---|---|---|
+| `BookingModelAssembler` | `BookingResponse` | `BookingController` |
+| `CampusResourceModelAssembler` | `ResourceResponse` | `CampusResourceController` |
+| `MaintenanceTicketModelAssembler` | `TicketResponse` | `MaintenanceController` |
+| `TicketCommentModelAssembler` | `TicketCommentResponse` | `MaintenanceController` |
+| `TicketImageModelAssembler` | `TicketImageResponse` | `MaintenanceController` |
+| `NotificationModelAssembler` | `NotificationResponse` | `NotificationController` |
+
+**Example:** `GET /api/bookings` returns a HAL **collection** (`_embedded` items each with `_links`). **Caching:** many safe `GET`s set `Cache-Control: private, max-age=…` and `Vary: Authorization` so caches stay per-user.
+
+**Frontend:** `frontend/src/api/hateoas.js` exports `unwrapHalCollection()` so pages receive a plain array from `_embedded`; used by `BookingsPage.jsx`, `ResourcesPage.jsx`, `MaintenancePage.jsx`, `NotificationBell.jsx`, and `DashboardPage.jsx`.
+
+### 6.4 API documentation — configuration in repo
+
+| What | Where |
+|---|---|
+| OpenAPI bean (title, description, JWT scheme) | `backend/.../config/OpenApiConfig.java` |
+| SpringDoc + Swagger UI dependency | `backend/pom.xml` — `springdoc-openapi-starter-webmvc-ui` |
+| UI path redirect `/swagger-ui.html` | `backend/.../config/WebConfig.java` |
+| Permitting `/swagger-ui/**`, `/v3/api-docs` without login | `backend/.../config/SecurityConfig.java` |
+| Swagger UI sort order | `backend/src/main/resources/application.yml` — `springdoc.swagger-ui.*` |
+
+**Live links (backend running):** same table as in [§4 OpenAPI / Swagger UI](#openapi--swagger-ui-interactive-docs).
+
+---
+
+## 7. Project Structure
 
 ```
 PAF/
@@ -333,6 +426,13 @@ PAF/
 │       ├── exception/
 │       │   ├── ApiException.java
 │       │   └── GlobalExceptionHandler.java
+│       ├── hateoas/                    ← HAL link assemblers (HATEOAS)
+│       │   ├── BookingModelAssembler.java
+│       │   ├── CampusResourceModelAssembler.java
+│       │   ├── MaintenanceTicketModelAssembler.java
+│       │   ├── TicketCommentModelAssembler.java
+│       │   ├── TicketImageModelAssembler.java
+│       │   └── NotificationModelAssembler.java
 │       ├── repository/                 ← MongoRepository interfaces
 │       ├── security/
 │       │   ├── JwtService.java
@@ -363,7 +463,8 @@ PAF/
         ├── main.jsx
         ├── App.jsx                     ← Routes + guards
         ├── api/
-        │   └── client.js              ← Fetch wrapper with JWT Bearer header
+        │   ├── client.js              ← Fetch wrapper with JWT Bearer header
+        │   └── hateoas.js             ← unwrapHalCollection() for HAL _embedded lists
         ├── context/
         │   └── AuthContext.jsx        ← Global auth state + JWT management
         ├── layouts/
@@ -387,7 +488,7 @@ PAF/
 
 ---
 
-## 7. CRUD Work Allocation — 4 Members
+## 8. CRUD Work Allocation — 4 Members
 
 Each member covers at least 4 endpoints across GET, POST, PUT/PATCH, DELETE as required by the assignment.
 
@@ -534,7 +635,7 @@ Each member covers at least 4 endpoints across GET, POST, PUT/PATCH, DELETE as r
 
 ---
 
-## 8. How to Run the Project
+## 9. How to Run the Project
 
 ### Prerequisites
 
@@ -664,10 +765,12 @@ java -jar target\smart-campus-hub-1.0.0-SNAPSHOT.jar
 | `http://localhost:5173/admin/analytics` | Admin — analytics dashboard |
 | `http://localhost:8080/api/...` | REST API direct access |
 | `http://localhost:5173/api/...` | REST API via Vite proxy (use this in dev) |
+| [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) | Swagger UI (OpenAPI) |
+| [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) | OpenAPI 3 JSON |
 
 ---
 
-## 9. Environment Variables
+## 10. Environment Variables
 
 All variables live in `backend/.env` (copy from `backend/env.sample`).
 
@@ -686,7 +789,7 @@ All variables live in `backend/.env` (copy from `backend/env.sample`).
 
 ---
 
-## 10. Architecture — How Layers Communicate
+## 11. Architecture — How Layers Communicate
 
 ### Layer Responsibility Summary
 
@@ -697,7 +800,7 @@ All variables live in `backend/.env` (copy from `backend/env.sample`).
 | **Service** | `service/*Service.java` | **ALL business logic**, validation, rules, cross-collection lookups | Repository + other Services |
 | **DTO (Request)** | `dto/*/XxxRequest.java` | Shape of JSON arriving **from** the frontend | Controller receives it |
 | **DTO (Response)** | `dto/*/XxxResponse.java` | Shape of JSON sent **to** the frontend | Controller returns it |
-| **Controller** | `controller/*Controller.java` | Route HTTP → Service, security annotations, zero business logic | Service only, never Repository |
+| **Controller** | `controller/*Controller.java` | Route HTTP → Service, security annotations, zero business logic; HATEOAS endpoints return `EntityModel` / `CollectionModel` | Service + assemblers (`hateoas/*Assembler.java`), never Repository |
 | **Exception Handler** | `exception/GlobalExceptionHandler.java` | Catches any thrown exception, converts to JSON error response | Entire application |
 | **Frontend `client.js`** | `api/client.js` | Fetch wrapper — adds JWT Bearer header, parses responses, handles errors | All React pages use it |
 | **React Pages** | `pages/*.jsx` | UI state, calls `apiGet` / `apiSend`, renders data | `client.js` only |
@@ -749,8 +852,8 @@ MONGODB
 SERVICE converts Entity → Response DTO
   BookingResponse { id, resourceName, userEmail, status, startTime, endTime, ... }
         ↑ returned to Controller
-CONTROLLER returns BookingResponse
-  Spring serialises to JSON → HTTP 201 Created
+CONTROLLER returns `EntityModel<BookingResponse>` (HAL: DTO fields + `_links`)
+  Spring HATEOAS serialises to JSON → HTTP 201 Created
         ↑ HTTP response
 REACT (client.js → handle())
   Parses JSON → returns booking object to page
@@ -774,7 +877,7 @@ REACT (client.js → handle())
 
 ---
 
-## 11. Key Design Decisions
+## 12. Key Design Decisions
 
 | Decision | Reason |
 |---|---|
@@ -790,3 +893,5 @@ REACT (client.js → handle())
 | **SLA timer as a React hook** | `useElapsedTime` recalculates every minute and colours the chip based on hours elapsed |
 | **Analytics charts pure SVG** | No external chart library dependency; keeps bundle size small |
 | **Notification type inferred from message text** | Avoids changing the `NotificationType` enum or database schema; works for all existing notifications |
+| **Spring HATEOAS + HAL on core collections** | Bookings, resources, maintenance tickets, and notifications expose `_links` / `_embedded` for rubric REST maturity; clients use `unwrapHalCollection` where lists are HAL |
+| **SpringDoc on `/swagger-ui` + `/v3/api-docs`** | Interactive API exploration and OpenAPI export without hand-maintaining a separate spec file |

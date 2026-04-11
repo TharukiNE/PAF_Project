@@ -10,16 +10,18 @@ public record TicketCommentResponse(
         String userEmail,
         String content,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String ticketId
 ) {
-    public static TicketCommentResponse from(MaintenanceTicket.EmbeddedTicketComment c) {
+    public static TicketCommentResponse from(MaintenanceTicket.EmbeddedTicketComment c, String ticketId) {
         return new TicketCommentResponse(
                 c.getId(),
                 c.getUserId(),
                 c.getUserEmail(),
                 c.getContent(),
                 c.getCreatedAt(),
-                c.getUpdatedAt()
+                c.getUpdatedAt(),
+                ticketId
         );
     }
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import StatCard from '../components/StatCard.jsx'
 import CircularProgress from '../components/CircularProgress.jsx'
+import { unwrapHalCollection } from '../api/hateoas.js'
 import { apiGet } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -59,13 +60,14 @@ export default function DashboardPage() {
           apiGet('/bookings?all=true'),
           apiGet('/maintenance/tickets'),
         ])
-        const bList = Array.isArray(bookings) ? bookings : []
+        const rList = unwrapHalCollection(resources)
+        const bList = unwrapHalCollection(bookings)
         const active = bList.filter((b) => b.status === 'PENDING' || b.status === 'APPROVED').length
         if (!cancelled) {
           setStats({
-            resources: Array.isArray(resources) ? resources.length : 0,
+            resources: rList.length,
             bookings: bList.length,
-            tickets: Array.isArray(tickets) ? tickets.length : 0,
+            tickets: unwrapHalCollection(tickets).length,
             activeBookings: active,
           })
         }

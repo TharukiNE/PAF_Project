@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import QRCode from 'qrcode'
+import { unwrapHalCollection } from '../api/hateoas.js'
 import { apiDelete, apiGet, apiSend } from '../api/client'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -110,8 +111,8 @@ export default function BookingsPage() {
     try {
       const q = isAdmin ? '?all=true' : ''
       const [b, r] = await Promise.all([apiGet('/bookings' + q), apiGet('/resources')])
-      setBookings(Array.isArray(b) ? b : [])
-      setResources(Array.isArray(r) ? r.filter((x) => x.status === 'ACTIVE') : [])
+      setBookings(unwrapHalCollection(b))
+      setResources(unwrapHalCollection(r).filter((x) => x.status === 'ACTIVE'))
     } catch (e) {
       setError(e.message)
     }
